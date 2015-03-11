@@ -1,10 +1,10 @@
-#' @title Logistic Principal Component Analysis
+#' @title Generalized Principal Component Analysis
 #'
 #' @description
 #' Dimension reduction for exponential family data by extending Pearson's
 #' PCA formulation
 #'
-#' @param x matrix of either binary, count, or continuous data
+#' @param x matrix of either binary, proportions, count, or continuous data
 #' @param k number of principal components to return
 #' @param M value to approximate the saturated model
 #' @param family exponential family distribution of data
@@ -34,18 +34,190 @@
 #' \item{prop_deviance_expl}{the proportion of deviance explained by this model.
 #'    If \code{main_effects = TRUE}, the null model is just the main effects, otherwise
 #'    the null model estimates 0 for all natural parameters.}
-#'
-#' @examples
 #' @export
-logisticPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "poisson"),
+generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "poisson"),
                         majorizer = c("row", "all"), weights,
                         quiet = TRUE, use_irlba = FALSE,
                         max_iters = 1000, conv_criteria = 1e-5, random_start = FALSE,
                         start_U, start_mu, main_effects = TRUE) {
+  use_irlba = use_irlba && requireNamespace("irlba", quietly = TRUE)
+
+  family = match.arg(family)
+  check_family(x, family)
+
+  majorizer = match.arg(majorizer)
+
+  if (missing(weights)) {
+    weights = 1.0
+    sum_weights = sum(!is.na(x))
+  } else {
+    weights[is.na(x)] <- 0
+    sum_weights = sum(weights)
+  }
+
+  if (M == 0) {
+    M = 4
+    solve_M = TRUE
+  } else {
+    solve_M = FALSE
+  }
+
+  x = as.matrix(x)
+  missing_mat = is.na(x)
+  n = nrow(x)
+  d = ncol(x)
+  ones = rep(1, n)
+
+  # Initialize #
+  ##################
+  if (main_effects) {
+    if (!missing(start_mu)) {
+      mu = start_mu
+    } else {
+      eta = saturated_natural_parameters(x, family, M = M)
+      is.na(eta[is.na(x)]) <- TRUE
+      mu = colMeans(eta, na.rm = TRUE)
+      # mu = saturated_natural_parameters(colMeans(x, na.rm = TRUE), family, M)
+    }
+  } else {
+    mu = rep(0, d)
+  }
+
+  eta = saturated_natural_parameters(x, family, M = M) + missing_mat * outer(ones, mu)
+  eta_centered = scale(eta, center = mu, scale = FALSE)
+
+  if (!missing(start_U)) {
+    U = sweep(start_U, 2, sqrt(colSums(start_U^2)), "/")
+  } else if (random_start) {
+    U = matrix(rnorm(d * k), d, k)
+    U = qr.Q(qr(U))
+  } else {
+    if (use_irlba) {
+      udv = irlba::irlba(eta_centered, nu = k, nv = k)
+    } else {
+      udv = svd(eta_centered)
+    }
+    U = matrix(udv$v[, 1:k], d, k)
+  }
+
+  loss_trace = numeric(max_iters + 1)
+  theta = outer(ones, mu) + eta_centered %*% tcrossprod(U)
+  loglike <- exp_fam_log_like(x, theta, family, weights)
+  loss_trace[1] = -loglike / sum_weights
+  ptm <- proc.time()
+
+  if (!quiet) {
+    cat(0, "  ", loss_trace[1], "")
+    cat("0 hours elapsed\n")
+  }
+
+  for (m in 1:max_iters) {
+    last_U = U
+    last_M = M
+    last_mu = mu
+
+    # TODO: solve for M with Poisson
+    # if (solve_M) {
+    #   Phat = inv.logit.mat(theta)
+    #   M_slope = sum(((x - Phat) * (q %*% tcrossprod(U)))[q != 0])
+    #   M_curve = -sum((Phat * (1 - Phat) * (q %*% U %*% t(U))^2)[q != 0])
+    #   M = M - M_slope / M_curve
+    #
+    #   eta = M * q + missing_mat * outer(rep(1, n), mu)
+    #   theta = outer(rep(1, n), mu) + scale(eta, center = mu, scale = FALSE) %*% tcrossprod(U)
+    # }
+
+    first_dir = exp_fam_mean(theta, family)
+    second_dir = exp_fam_variance(theta, family, weights)
+    if (majorizer == "row") {
+      W = apply(second_dir, 1, max)
+    } else if (majorizer == "all") {
+      W = rep(max(second_dir), n)
+    }
+
+    # TODO: not sure "weights * " are correct here
+    # EM style estimate of Z with theta when missing data
+    Z = as.matrix(theta + weights * (x - first_dir) / outer(W, rep(1, d)))
+    Z[is.na(x)] <- theta[is.na(x)]
+    if (main_effects) {
+      mu = as.numeric(colSums(diag(W) %*% (Z - eta %*% tcrossprod(U))) / sum(W))
+    }
+
+    eta = saturated_natural_parameters(x, family, M = M) + missing_mat * outer(ones, mu)
+    eta_centered = scale(eta, center = mu, scale = FALSE)
+
+    mat_temp = t(eta_centered) %*% diag(W) %*% scale(Z, center = mu, scale = FALSE)
+    mat_temp = mat_temp + t(mat_temp) -
+      t(eta_centered) %*% diag(W) %*% eta_centered
+
+    # irlba sometimes gives poor estimates of e-vectors
+    # so I switch to standard eigen if it does
+    repeat {
+      if (use_irlba) {
+        udv = irlba::irlba(mat_temp, nu=k, nv=k, adjust=3)
+        U = matrix(udv$u[, 1:k], d, k)
+      } else {
+        eig = eigen(mat_temp, symmetric=TRUE)
+        U = matrix(eig$vectors[, 1:k], d, k)
+      }
+
+      theta = outer(ones, mu) + eta_centered %*% tcrossprod(U)
+      this_loglike <- exp_fam_log_like(x, theta, family, weights)
+
+      if (!use_irlba | this_loglike>=loglike) {
+        loglike = this_loglike
+        break
+      } else {
+        use_irlba = FALSE
+        if (!quiet) {cat("Quitting irlba!\n")}
+      }
+    }
+
+    loss_trace[m + 1] = (-loglike) / sum_weights
+
+    if (!quiet) {
+      time_elapsed = as.numeric(proc.time() - ptm)[3]
+      tot_time = max_iters / m * time_elapsed
+      time_remain = tot_time - time_elapsed
+      cat(m, "  ", loss_trace[m + 1], "")
+      cat(round(time_elapsed / 3600, 1), "hours elapsed. Max", round(time_remain / 3600, 1), "hours remain.\n")
+    }
+    if (m > 4) {
+      if (abs(loss_trace[m] - loss_trace[m+1]) < conv_criteria) {
+        break
+      }
+    }
+  }
+
+  # test if loss function increases
+  if ((loss_trace[m + 1] - loss_trace[m]) > (1e-10)) {
+    U = last_U
+    mu = last_mu
+    M = last_M
+    m = m - 1
+
+    eta = saturated_natural_parameters(x, family, M = M) + missing_mat * outer(ones, mu)
+    eta_centered = scale(eta, center = mu, scale = FALSE)
+
+    if (family != "poisson") {
+      warning("Algorithm stopped because deviance increased.\nThis should not happen!")
+    } else {
+      message("Algorithm stopped because deviance increased.")
+    }
+  }
+
+  # calculate the null log likelihood for % deviance explained
+  # TODO: does not take into account weights in null
+  if (main_effects) {
+    null_theta = saturated_natural_parameters(colMeans(x, na.rm = TRUE), family, M)
+  } else {
+    null_theta = rep(0, d)
+  }
+  null_loglike =  exp_fam_log_like(x, outer(ones, null_theta), family, weights)
 
   object <- list(mu = mu,
                  U = U,
-                 PCs = scale(eta, center = mu, scale = FALSE) %*% U,
+                 PCs = eta_centered %*% U,
                  M = M,
                  family = family,
                  iters = m,
@@ -65,12 +237,26 @@ logisticPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "poi
 #'  \code{type = "link"} gives matrix on the natural parameter scale and
 #'  \code{type = "response"} gives matrix on the response scale
 #' @param ... Additional arguments
-#' @examples
 #' @export
-predict.lpca <- function(object, newdata, type = c("PCs", "link", "response"), ...) {
+predict.gpca <- function(object, newdata, type = c("PCs", "link", "response"), ...) {
   type = match.arg(type)
 
+  # TODO: check that newdata is of same family as object$family
 
+  if (missing(newdata)) {
+    PCs = object$PCs
+  } else {
+    eta = saturated_natural_parameters(newdata, object$family, object$M)
+    # TODO: plus missing data main effects
+    PCs = scale(eta, center = object$mu, scale = FALSE) %*% object$U
+  }
+
+  if (type == "PCs") {
+    PCs
+  } else {
+    object$PCs = PCs
+    fitted(object, type, ...)
+  }
 }
 
 #' @title Fitted values using generalized PCA
@@ -82,9 +268,8 @@ predict.lpca <- function(object, newdata, type = c("PCs", "link", "response"), .
 #' @param type the type of fitting required. \code{type = "link"} gives output on the natural
 #'  parameter scale and \code{type = "response"} gives output on the response scale
 #' @param ... Additional arguments
-#' @examples
 #' @export
-fitted.lpca <- function(object, type = c("link", "response"), ...) {
+fitted.gpca <- function(object, type = c("link", "response"), ...) {
   type = match.arg(type)
   n = nrow(object$PCs)
 
@@ -93,7 +278,7 @@ fitted.lpca <- function(object, type = c("link", "response"), ...) {
   if (type == "link") {
     return(theta)
   } else if (type == "response") {
-    return(exponential_family_mean(theta))
+    return(exp_fam_mean(theta, object$family))
   }
 }
 
@@ -107,9 +292,8 @@ fitted.lpca <- function(object, type = c("link", "response"), ...) {
 #' iteration, \code{type = "loadings"} plots the first 2 principal component
 #' loadings, \code{type = "scores"} plots the loadings first 2 principal component scores
 #' @param ... Additional arguments
-#' @examples
 #' @export
-plot.lpca <- function(object, type = c("trace", "loadings", "scores"), ...) {
+plot.gpca <- function(object, type = c("trace", "loadings", "scores"), ...) {
   library("ggplot2")
   type = match.arg(type)
 
@@ -145,9 +329,10 @@ plot.lpca <- function(object, type = c("trace", "loadings", "scores"), ...) {
 #' @param ... Additional arguments
 #'
 #' @export
-print.lpca <- function(x, ...) {
+print.gpca <- function(x, ...) {
   cat(nrow(x$PCs), "rows and ")
-  cat(nrow(x$U), "columns\n")
+  cat(nrow(x$U), "columns of ")
+  cat(x$family, "data\n")
   cat("Rank", ncol(x$U), "solution with M =", x$M, "\n")
   cat("\n")
   cat(round(x$prop_deviance_expl * 100, 1), "% of deviance explained\n", sep = "")
@@ -173,11 +358,11 @@ print.lpca <- function(x, ...) {
 #' @return A matrix of the CV log likelihood with \code{k} in rows and
 #'  \code{M} in columns
 #'
-#' @examples
 #' @export
-cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family, folds = 5, quiet = TRUE, ...) {
-  q = 2 * as.matrix(x) - 1
-  q[is.na(q)] <- 0
+cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "binomial", "poisson"),
+                    folds = 5, quiet = TRUE, ...) {
+  family = match.arg(family)
+  check_family(x, family)
 
   if (length(folds) > 1) {
     # does this work if factor?
@@ -230,7 +415,6 @@ cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family, folds = 5, quiet = T
 #' @param object a \code{cv.gpca} object
 #' @param ... Additional arguments
 #'
-#' @examples
 #' @export
 plot.cv.gpca <- function(object, ...) {
   library(ggplot2)

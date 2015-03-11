@@ -35,32 +35,48 @@ log_like_Bernoulli <- function(x, theta, q) {
   .Call(compute_loglik, q, theta)
 }
 
-
-saturated_natural_parameters <- function(mat, family, M) {
-  if (family == "gaussian") {
-    eta = mat
-  } else if (family == "binomial") {
-    eta = abs(M) * (2 * mat - 1)
-  } else if (family == "poisson") {
-    eta = log(mat)
-    eta[mat==0] = -abs(M)
+#' @export
+check_family <- function(x, family) {
+  distinct_vals = unique(c(x[!is.na(x)]))
+  if (all(distinct_vals %in% c(0, 1))) {
+    if (family != "binomial") {
+      message("All entries are binary. Are you sure you didn't mean binomial?")
+    }
+  } else if (all(distinct_vals >= 0 & distinct_vals %% 1 == 0)) {
+    if (family != "poisson") {
+      message("All entries are counts. Are you sure you didn't mean poisson?")
+    }
   }
+}
+
+#' @export
+saturated_natural_parameters <- function(x, family, M) {
+  if (family == "gaussian") {
+    eta = x
+  } else if (family == "binomial") {
+    eta = abs(M) * (2 * x - 1)
+  } else if (family == "poisson") {
+    eta = log(x)
+    eta[x==0] = -abs(M)
+  }
+  eta[is.na(x)] <- 0
   return(eta)
 }
 
-exponential_family_mean <- function(theta, family) {
+#' @export
+exp_fam_mean <- function(theta, family) {
   if (family == "gaussian") {
     mean_mat = theta
   } else if (family == "binomial") {
     mean_mat = inv.logit.mat(theta)
-    # (1 + exp(-theta))^(-1)
   } else if (family == "poisson") {
     mean_mat = exp(theta)
   }
   return(mean_mat)
 }
 
-exponential_family_variance <- function(theta, family, weights = 1.0) {
+#' @export
+exp_fam_variance <- function(theta, family, weights = 1.0) {
   if (family == "gaussian") {
     var_mat = matrix(1, nrow(theta), ncol(theta)) * weights
   } else if (family == "binomial") {
@@ -72,12 +88,14 @@ exponential_family_variance <- function(theta, family, weights = 1.0) {
   return(var_mat)
 }
 
-exponential_family_log_likelihood <- function(mat, theta, family, weights = 1.0) {
+#' @export
+exp_fam_log_like <- function(x, theta, family, weights = 1.0) {
   if (family == "gaussian") {
-    return(sum(weights * 0.5 * (mat - theta)^2, na.rm = TRUE))
+    # TODO: are these all loglikes and not negative?
+    return(sum(weights * -0.5 * (x - theta)^2, na.rm = TRUE))
   } else if (family == "binomial") {
-    return(sum(weights * (mat * theta - log(1 + exp(theta))), na.rm = TRUE))
+    return(sum(weights * (x * theta - log(1 + exp(theta))), na.rm = TRUE))
   } else if (family == "poisson") {
-    return(sum(weights * (mat * theta - exp(theta)), na.rm = TRUE))
+    return(sum(weights * (x * theta - exp(theta)), na.rm = TRUE))
   }
 }
