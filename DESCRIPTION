@@ -1,0 +1,19 @@
+Package: generalizedPCA
+Type: Package
+Title: Generalized PCA
+Version: 0.1
+Date: 2015-03-11
+NeedsCompilation: yes
+ByteCompile: yes
+Author: Andrew J. Landgraf
+Maintainer: Andrew J. Landgraf <landgraf.5@osu.edu>
+Description: Generalized dimensionality reduction by extending PCA
+License: MIT + file LICENSE
+LazyData: TRUE
+URL: https://github.com/andland/generalizedPCA
+Imports:
+    ggplot2,
+    reshape2
+Suggests:
+    irlba,
+    testthat
