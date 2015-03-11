@@ -55,6 +55,11 @@ saturated_natural_parameters <- function(x, family, M) {
     eta = x
   } else if (family == "binomial") {
     eta = abs(M) * (2 * x - 1)
+    non_binary = (x != 0 & x != 1 & !is.na(x))
+    if (sum(non_binary) > 0) {
+      logitvals = log(x) - log(1 - x)
+      eta[non_binary] = logitvals[non_binary]
+    }
   } else if (family == "poisson") {
     eta = log(x)
     eta[x==0] = -abs(M)
