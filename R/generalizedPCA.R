@@ -135,7 +135,6 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
       W = rep(max(second_dir), n)
     }
 
-    # TODO: not sure "weights * " are correct here
     # EM style estimate of Z with theta when missing data
     Z = as.matrix(theta + weights * (x - first_dir) / outer(W, rep(1, d)))
     Z[is.na(x)] <- theta[is.na(x)]
@@ -246,8 +245,8 @@ predict.gpca <- function(object, newdata, type = c("PCs", "link", "response"), .
   if (missing(newdata)) {
     PCs = object$PCs
   } else {
-    eta = saturated_natural_parameters(newdata, object$family, object$M)
-    # TODO: plus missing data main effects
+    eta = saturated_natural_parameters(newdata, object$family, object$M) +
+      is.na(newdata) * outer(rep(1, nrow(newdata)), object$mu)
     PCs = scale(eta, center = object$mu, scale = FALSE) %*% object$U
   }
 
