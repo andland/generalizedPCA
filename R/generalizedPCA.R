@@ -36,10 +36,10 @@
 #'    the null model estimates 0 for all natural parameters.}
 #' @export
 generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "poisson"),
-                        majorizer = c("row", "all"), weights,
-                        quiet = TRUE, use_irlba = FALSE,
-                        max_iters = 1000, conv_criteria = 1e-5, random_start = FALSE,
-                        start_U, start_mu, main_effects = TRUE) {
+                           majorizer = c("row", "all"), weights,
+                           quiet = TRUE, use_irlba = FALSE,
+                           max_iters = 1000, conv_criteria = 1e-5, random_start = FALSE,
+                           start_U, start_mu, main_effects = TRUE) {
   use_irlba = use_irlba && requireNamespace("irlba", quietly = TRUE)
 
   family = match.arg(family)
@@ -111,7 +111,7 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     cat("0 hours elapsed\n")
   }
 
-  for (m in 1:max_iters) {
+  for (m in seq_len(max_iters)) {
     last_U = U
     last_M = M
     last_mu = mu

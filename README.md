@@ -1,6 +1,6 @@
 # Generalized PCA
 
-`generalizedPCA` is an R package which extends principal component analysis to other types of data, much like [generalized linear models](http://en.wikipedia.org/wiki/Generalized_linear_model) extends linear regression. The package, [logisticPCA](https://github.com/andland/logisticPCA), contains the extension to binary data, among other methods, and this package intends to generalize it to all exponential family distributions. Please note that it is still in the very early stages of development and the conventions will possibly change in the future.
+`generalizedPCA` is an R package which extends principal component analysis to other types of data, much like [generalized linear models](http://en.wikipedia.org/wiki/Generalized_linear_model) extends linear regression. The package [logisticPCA](https://github.com/andland/logisticPCA) contains the extension to binary data, among other methods, and this package intends to generalize it to all exponential family distributions. Please note that it is still in the very early stages of development and the conventions will possibly change in the future.
 
 ## Installation
 
