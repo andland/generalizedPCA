@@ -5,7 +5,7 @@
 \title{Generalized Principal Component Analysis}
 \usage{
 generalizedPCA(x, k = 2, M = 4, family = c("gaussian", "binomial",
-  "poisson"), majorizer = c("row", "all"), weights, quiet = TRUE,
+  "poisson"), weights, quiet = TRUE, majorizer = c("row", "all"),
   use_irlba = FALSE, max_iters = 1000, conv_criteria = 1e-05,
   random_start = FALSE, start_U, start_mu, main_effects = TRUE)
 }
@@ -18,13 +18,13 @@ generalizedPCA(x, k = 2, M = 4, family = c("gaussian", "binomial",
 
 \item{family}{exponential family distribution of data}
 
-\item{majorizer}{how to majorize the deviance. \code{"row"} gives
-tighter majorization, but may take longer to calculate each iteration.
-\code{"all"} may be faster per iteration, but take more iterations}
-
 \item{weights}{a matrix of the same size as the \code{x} with data weights}
 
 \item{quiet}{logical; whether the calculation should give feedback}
+
+\item{majorizer}{how to majorize the deviance. \code{"row"} gives
+tighter majorization, but may take longer to calculate each iteration.
+\code{"all"} may be faster per iteration, but take more iterations}
 
 \item{use_irlba}{logical; if \code{TRUE}, the function uses the irlba package
 to more quickly calculate the eigen-decomposition}

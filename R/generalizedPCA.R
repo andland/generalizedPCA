@@ -8,11 +8,11 @@
 #' @param k number of principal components to return
 #' @param M value to approximate the saturated model
 #' @param family exponential family distribution of data
+#' @param weights a matrix of the same size as the \code{x} with data weights
+#' @param quiet logical; whether the calculation should give feedback
 #' @param majorizer how to majorize the deviance. \code{"row"} gives
 #'  tighter majorization, but may take longer to calculate each iteration.
 #'  \code{"all"} may be faster per iteration, but take more iterations
-#' @param weights a matrix of the same size as the \code{x} with data weights
-#' @param quiet logical; whether the calculation should give feedback
 #' @param use_irlba logical; if \code{TRUE}, the function uses the irlba package
 #'   to more quickly calculate the eigen-decomposition
 #' @param max_iters number of maximum iterations
@@ -39,10 +39,9 @@
 #'    the null model estimates 0 for all natural parameters.}
 #' @export
 generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "poisson"),
-                           majorizer = c("row", "all"), weights,
-                           quiet = TRUE, use_irlba = FALSE,
-                           max_iters = 1000, conv_criteria = 1e-5, random_start = FALSE,
-                           start_U, start_mu, main_effects = TRUE) {
+                           weights, quiet = TRUE, majorizer = c("row", "all"),
+                           use_irlba = FALSE, max_iters = 1000, conv_criteria = 1e-5,
+                           random_start = FALSE, start_U, start_mu, main_effects = TRUE) {
   use_irlba = use_irlba && requireNamespace("irlba", quietly = TRUE)
 
   family = match.arg(family)
