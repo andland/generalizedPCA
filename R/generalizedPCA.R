@@ -70,6 +70,11 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
   d = ncol(x)
   ones = rep(1, n)
 
+  # if it is standard PCA, only need 1 iteration
+  if (family == "gaussian" & all(weights == 1) & sum(missing_mat) == 0) {
+    max_iters = 1
+  }
+
   # Initialize #
   ##################
   if (main_effects) {
