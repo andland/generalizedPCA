@@ -18,6 +18,10 @@ generalizedPCA(x, k = 2, M = 4, family = c("gaussian", "binomial",
 
 \item{family}{exponential family distribution of data}
 
+\item{majorizer}{how to majorize the deviance. \code{"row"} gives
+tighter majorization, but may take longer to calculate each iteration.
+\code{"all"} may be faster per iteration, but take more iterations}
+
 \item{weights}{a matrix of the same size as the \code{x} with data weights}
 
 \item{quiet}{logical; whether the calculation should give feedback}

@@ -8,6 +8,9 @@
 #' @param k number of principal components to return
 #' @param M value to approximate the saturated model
 #' @param family exponential family distribution of data
+#' @param majorizer how to majorize the deviance. \code{"row"} gives
+#'  tighter majorization, but may take longer to calculate each iteration.
+#'  \code{"all"} may be faster per iteration, but take more iterations
 #' @param weights a matrix of the same size as the \code{x} with data weights
 #' @param quiet logical; whether the calculation should give feedback
 #' @param use_irlba logical; if \code{TRUE}, the function uses the irlba package
