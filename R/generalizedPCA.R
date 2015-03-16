@@ -128,6 +128,8 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     U = matrix(udv$v[, 1:k], d, k)
   }
 
+  sat_loglike = exp_fam_log_like(x, eta, family, weights)
+
   loss_trace = numeric(max_iters + 1)
   theta = outer(ones, mu) + eta_centered %*% tcrossprod(U)
   loglike <- exp_fam_log_like(x, theta, family, weights)
@@ -244,7 +246,7 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
   } else {
     null_theta = rep(0, d)
   }
-  null_loglike =  exp_fam_log_like(x, outer(ones, null_theta), family, weights)
+  null_loglike = exp_fam_log_like(x, outer(ones, null_theta), family, weights)
 
   object <- list(mu = mu,
                  U = U,
@@ -253,7 +255,8 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
                  family = family,
                  iters = m,
                  loss_trace = loss_trace[1:(m + 1)],
-                 prop_deviance_expl = 1 - loglike / null_loglike)
+                 prop_deviance_expl = 1 - (loglike - sat_loglike) / (null_loglike - sat_loglike)
+  )
   class(object) <- "gpca"
   object
 }
