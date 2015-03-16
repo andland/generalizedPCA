@@ -18,4 +18,21 @@ loadings, \code{type = "scores"} plots the loadings first 2 principal component 
 \description{
 Plots the results of a generalized PCA
 }
+\examples{
+# construct a low rank matrix in the natural parameter scale
+rows = 100
+cols = 10
+set.seed(1)
+mat_np = outer(rnorm(rows), rnorm(cols))
+
+# generate a count matrix
+mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
+
+# run logistic PCA on it
+gpca = generalizedPCA(mat, k = 2, M = 4, family = "poisson")
+
+\dontrun{
+plot(gpca)
+}
+}
 

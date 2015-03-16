@@ -11,6 +11,7 @@
 #' @examples
 #' (mat = matrix(rnorm(10 * 5), nrow = 10, ncol = 5))
 #' inv.logit.mat(mat)
+#' @export
 inv.logit.mat <- function(x, min = 0, max = 1) {
   .Call(inv_logit_mat, x, min, max)
 }
@@ -99,6 +100,6 @@ exp_fam_log_like <- function(x, theta, family, weights = 1.0) {
   } else if (family == "binomial") {
     return(sum(weights * (x * theta - log(1 + exp(theta))), na.rm = TRUE))
   } else if (family == "poisson") {
-    return(sum(weights * (x * theta - exp(theta)), na.rm = TRUE))
+    return(sum(weights * (x * theta - exp(theta) - lfactorial(x)), na.rm = TRUE))
   }
 }

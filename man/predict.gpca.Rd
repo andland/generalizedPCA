@@ -22,4 +22,22 @@ If missing, will use the data that \code{object} was fit on}
 \description{
 Predict generalized PCA scores or reconstruction on new data
 }
+\examples{
+# construct a low rank matrices in the natural parameter scale
+rows = 100
+cols = 10
+set.seed(1)
+loadings = rnorm(cols)
+mat_np = outer(rnorm(rows), rnorm(cols))
+mat_np_new = outer(rnorm(rows), loadings)
+
+# generate a count matrices
+mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
+mat_new = matrix(rpois(rows * cols, c(exp(mat_np_new))), rows, cols)
+
+# run Poisson PCA on it
+gpca = generalizedPCA(mat, k = 1, M = 4, family = "poisson")
+
+PCs = predict(gpca, mat_new)
+}
 

@@ -17,4 +17,20 @@ parameter scale and \code{type = "response"} gives output on the response scale}
 \description{
 Fit a lower dimentional representation of the exponential family matrix using generalized PCA
 }
+\examples{
+# construct a low rank matrix in the natural parameter scale
+rows = 100
+cols = 10
+set.seed(1)
+mat_np = outer(rnorm(rows), rnorm(cols))
+
+# generate a count matrix
+mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
+
+# run Poisson PCA on it
+gpca = generalizedPCA(mat, k = 1, M = 4, family = "poisson")
+
+# construct fitted expected value of counts matrix
+fit = fitted(gpca, type = "response")
+}
 

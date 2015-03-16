@@ -37,6 +37,18 @@
 #' \item{prop_deviance_expl}{the proportion of deviance explained by this model.
 #'    If \code{main_effects = TRUE}, the null model is just the main effects, otherwise
 #'    the null model estimates 0 for all natural parameters.}
+#' @examples
+#' # construct a low rank matrix in the natural parameter spcace
+#' rows = 100
+#' cols = 10
+#' set.seed(1)
+#' mat_np = outer(rnorm(rows), rnorm(cols))
+#'
+#' # generate a count matrix
+#' mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
+#'
+#' # run Poisson PCA on it
+#' gpca = generalizedPCA(mat, k = 1, M = 4, family = "poisson")
 #' @export
 generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "poisson"),
                            weights, quiet = TRUE, majorizer = c("row", "all"),
@@ -243,6 +255,23 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
 #'  \code{type = "link"} gives matrix on the natural parameter scale and
 #'  \code{type = "response"} gives matrix on the response scale
 #' @param ... Additional arguments
+#' @examples
+#' # construct a low rank matrices in the natural parameter spcace
+#' rows = 100
+#' cols = 10
+#' set.seed(1)
+#' loadings = rnorm(cols)
+#' mat_np = outer(rnorm(rows), rnorm(cols))
+#' mat_np_new = outer(rnorm(rows), loadings)
+#'
+#' # generate a count matrices
+#' mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
+#' mat_new = matrix(rpois(rows * cols, c(exp(mat_np_new))), rows, cols)
+#'
+#' # run Poisson PCA on it
+#' gpca = generalizedPCA(mat, k = 1, M = 4, family = "poisson")
+#'
+#' PCs = predict(gpca, mat_new)
 #' @export
 predict.gpca <- function(object, newdata, type = c("PCs", "link", "response"), ...) {
   type = match.arg(type)
@@ -274,6 +303,21 @@ predict.gpca <- function(object, newdata, type = c("PCs", "link", "response"), .
 #' @param type the type of fitting required. \code{type = "link"} gives output on the natural
 #'  parameter scale and \code{type = "response"} gives output on the response scale
 #' @param ... Additional arguments
+#' @examples
+#' # construct a low rank matrix in the natural parameter spcace
+#' rows = 100
+#' cols = 10
+#' set.seed(1)
+#' mat_np = outer(rnorm(rows), rnorm(cols))
+#'
+#' # generate a count matrix
+#' mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
+#'
+#' # run Poisson PCA on it
+#' gpca = generalizedPCA(mat, k = 1, M = 4, family = "poisson")
+#'
+#' # construct fitted expected value of counts matrix
+#' fit = fitted(gpca, type = "response")
 #' @export
 fitted.gpca <- function(object, type = c("link", "response"), ...) {
   type = match.arg(type)
@@ -298,6 +342,22 @@ fitted.gpca <- function(object, type = c("link", "response"), ...) {
 #' iteration, \code{type = "loadings"} plots the first 2 principal component
 #' loadings, \code{type = "scores"} plots the loadings first 2 principal component scores
 #' @param ... Additional arguments
+#' @examples
+#' # construct a low rank matrix in the natural parameter spcace
+#' rows = 100
+#' cols = 10
+#' set.seed(1)
+#' mat_np = outer(rnorm(rows), rnorm(cols))
+#'
+#' # generate a count matrix
+#' mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
+#'
+#' # run logistic PCA on it
+#' gpca = generalizedPCA(mat, k = 2, M = 4, family = "poisson")
+#'
+#' \dontrun{
+#' plot(gpca)
+#' }
 #' @export
 plot.gpca <- function(object, type = c("trace", "loadings", "scores"), ...) {
   library("ggplot2")
@@ -363,7 +423,20 @@ print.gpca <- function(x, ...) {
 #'
 #' @return A matrix of the CV log likelihood with \code{k} in rows and
 #'  \code{M} in columns
+#' @examples
+#' # construct a low rank matrix in the natural parameter spcace
+#' rows = 100
+#' cols = 10
+#' set.seed(1)
+#' mat_np = outer(rnorm(rows), rnorm(cols))
 #'
+#' # generate a count matrix
+#' mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
+#'
+#' \dontrun{
+#' loglikes = cv.gpca(mat, ks = 1:9, Ms = 3:6, family = "poisson")
+#' plot(loglikes)
+#' }
 #' @export
 cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "binomial", "poisson"),
                     folds = 5, quiet = TRUE, ...) {
@@ -380,7 +453,7 @@ cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "bino
     }
     cv = folds
   } else {
-    cv = sample(1:folds, nrow(q), replace = TRUE)
+    cv = sample(1:folds, nrow(x), replace = TRUE)
   }
 
   log_likes = matrix(0, length(ks), length(Ms),
@@ -397,7 +470,7 @@ cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "bino
         gpca = generalizedPCA(x[c != cv, ], k = k, M = M, family = family, ...)
         pred_theta = predict(gpca, newdat = x[c == cv, ], type = "link")
         log_likes[k == ks, M == Ms] = log_likes[k == ks, M == Ms] +
-          exponential_family_log_likelihood(x = x[c == cv, ], theta = pred_theta, family = family)
+          exp_fam_log_like(x = x[c == cv, ], theta = pred_theta, family = family)
       }
       if (!quiet) {
         cat("", log_likes[k == ks, M == Ms], "\n")
@@ -420,7 +493,20 @@ cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "bino
 #'
 #' @param object a \code{cv.gpca} object
 #' @param ... Additional arguments
+#' @examples
+#' # construct a low rank matrix in the natural parameter spcace
+#' rows = 100
+#' cols = 10
+#' set.seed(1)
+#' mat_np = outer(rnorm(rows), rnorm(cols))
 #'
+#' # generate a count matrix
+#' mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
+#'
+#' \dontrun{
+#' loglikes = cv.gpca(mat, ks = 1:9, Ms = 3:6, family = "poisson")
+#' plot(loglikes)
+#' }
 #' @export
 plot.cv.gpca <- function(object, ...) {
   library(ggplot2)

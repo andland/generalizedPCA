@@ -30,4 +30,19 @@ A matrix of the CV log likelihood with \code{k} in rows and
 \description{
 Run cross validation on dimension and \code{M} for generalized PCA
 }
+\examples{
+# construct a low rank matrix in the natural parameter scale
+rows = 100
+cols = 10
+set.seed(1)
+mat_np = outer(rnorm(rows), rnorm(cols))
+
+# generate a count matrix
+mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
+
+\dontrun{
+loglikes = cv.gpca(mat, ks = 1:9, Ms = 3:6, family = "poisson")
+plot(loglikes)
+}
+}
 
