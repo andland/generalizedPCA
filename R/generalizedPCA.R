@@ -128,12 +128,13 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     U = matrix(udv$v[, 1:k], d, k)
   }
 
-  sat_loglike = exp_fam_log_like(x, eta, family, weights)
+  eta_sat_nat = saturated_natural_parameters(x, family, M = Inf)
+  sat_loglike = exp_fam_log_like(x, eta_sat_nat, family, weights)
 
   loss_trace = numeric(max_iters + 1)
   theta = outer(ones, mu) + eta_centered %*% tcrossprod(U)
   loglike <- exp_fam_log_like(x, theta, family, weights)
-  loss_trace[1] = -loglike / sum_weights
+  loss_trace[1] = (sat_loglike - loglike) / sum_weights
   ptm <- proc.time()
 
   if (!quiet) {
@@ -202,7 +203,7 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
       }
     }
 
-    loss_trace[m + 1] = (-loglike) / sum_weights
+    loss_trace[m + 1] = (sat_loglike - loglike) / sum_weights
 
     if (!quiet) {
       time_elapsed = as.numeric(proc.time() - ptm)[3]

@@ -95,8 +95,7 @@ exp_fam_variance <- function(theta, family, weights = 1.0) {
 #' @export
 exp_fam_log_like <- function(x, theta, family, weights = 1.0) {
   if (family == "gaussian") {
-    # TODO: are these all loglikes and not negative?
-    return(sum(weights * -0.5 * (x - theta)^2, na.rm = TRUE))
+    return(-0.5 * sum(weights * (x - theta)^2, na.rm = TRUE))
   } else if (family == "binomial") {
     return(sum(weights * (x * theta - log(1 + exp(theta))), na.rm = TRUE))
   } else if (family == "poisson") {
