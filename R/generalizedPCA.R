@@ -66,6 +66,15 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     sum_weights = sum(!is.na(x))
   } else {
     weights[is.na(x)] <- 0
+    if (any(is.na(weights))) {
+      stop("Can't have NA in weights")
+    }
+    if (any(weights < 0)) {
+      stop("weights must be non-negative")
+    }
+    if (!all(dim(weights) == dim(x))) {
+      stop("x and weights are not the same dimension")
+    }
     sum_weights = sum(weights)
   }
 
@@ -225,9 +234,13 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
   }
 
   # calculate the null log likelihood for % deviance explained
-  # TODO: does not take into account weights in null
   if (main_effects) {
-    null_theta = saturated_natural_parameters(colMeans(x, na.rm = TRUE), family, M)
+    if (length(weights) == 1) {
+      weighted_col_means = colMeans(x, na.rm = TRUE)
+    } else {
+      weighted_col_means = colSums(x * weights, na.rm = TRUE) / colSums(weights)
+    }
+    null_theta = saturated_natural_parameters(weighted_col_means, family, M)
   } else {
     null_theta = rep(0, d)
   }
