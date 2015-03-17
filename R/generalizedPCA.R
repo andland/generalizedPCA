@@ -230,9 +230,10 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     eta_centered = scale(eta, center = mu, scale = FALSE)
 
     if (family != "poisson") {
-      warning("Algorithm stopped because deviance increased.\nThis should not happen!")
+      # maybe possible with missing data? TODO: look into
+      warning("Deviance increased in last iteration.\nThis should not happen!")
     } else {
-      message("Algorithm stopped because deviance increased.")
+      message("Deviance increased in last iteration.")
     }
   }
 
