@@ -244,7 +244,7 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     } else {
       weighted_col_means = colSums(x * weights, na.rm = TRUE) / colSums(weights)
     }
-    null_theta = saturated_natural_parameters(weighted_col_means, family, M)
+    null_theta = as.numeric(saturated_natural_parameters(matrix(weighted_col_means, 1), family, M))
   } else {
     null_theta = rep(0, d)
   }

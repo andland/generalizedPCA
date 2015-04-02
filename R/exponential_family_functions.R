@@ -38,7 +38,7 @@ log_like_Bernoulli <- function(x, theta, q) {
 check_family <- function(x, family) {
   distinct_vals = unique(c(x[!is.na(x)]))
   if (all(distinct_vals %in% c(0, 1))) {
-    if (family != "binomial") {
+    if (!(family %in% c("binomial", "multinomial"))) {
       message("All entries are binary. Are you sure you didn't mean binomial?")
     }
   } else if (all(distinct_vals >= 0 & distinct_vals %% 1 == 0)) {
@@ -52,10 +52,9 @@ check_family <- function(x, family) {
 saturated_natural_parameters <- function(x, family, M) {
   if (family == "gaussian") {
     eta = x
-  } else if (family %in% c("binomial", "multinomial")) {
+  } else if (family == "binomial") {
     eta = abs(M) * (2 * x - 1)
     non_binary = (x != 0 & x != 1 & !is.na(x))
-    # TODO: check this!
     if (sum(non_binary) > 0) {
       logitvals = log(x) - log(1 - x)
       eta[non_binary] = logitvals[non_binary]
@@ -63,6 +62,16 @@ saturated_natural_parameters <- function(x, family, M) {
   } else if (family == "poisson") {
     eta = log(x)
     eta[x==0] = -abs(M)
+  } else if (family == "multinomial") {
+    # TODO: check this! Correct if 0/1s. Heuristic if not
+    eta = abs(M) * (2 * x - 1)
+    non_binary = (x != 0 & x != 1 & !is.na(x))
+    if (sum(non_binary) > 0) {
+      # TODO: give warning first time if any(rowSums(x) == 1)
+      last_cat_prob = ifelse(rowSums(x) == 1, inv.logit.mat(-M), 1 - rowSums(x))
+      logitvals = sweep(log(x), 1, log(last_cat_prob), "-")
+      eta[non_binary] = logitvals[non_binary]
+    }
   }
   eta[is.na(x)] <- 0
   return(eta)
