@@ -55,6 +55,7 @@ saturated_natural_parameters <- function(x, family, M) {
   } else if (family %in% c("binomial", "multinomial")) {
     eta = abs(M) * (2 * x - 1)
     non_binary = (x != 0 & x != 1 & !is.na(x))
+    # TODO: check this!
     if (sum(non_binary) > 0) {
       logitvals = log(x) - log(1 - x)
       eta[non_binary] = logitvals[non_binary]
@@ -104,15 +105,10 @@ exp_fam_log_like <- function(x, theta, family, weights = 1.0) {
   } else if (family == "poisson") {
     return(sum(weights * (x * theta - exp(theta) - lfactorial(x)), na.rm = TRUE))
   } else if (family == "multinomial") {
-    if (length(weights > 0) & any(apply(weights, 1, var) > 0)) {
-      stop("weights should be the same for every variable withing each row")
+    if (length(weights) > 1 && any(apply(weights, 1, var) > 0)) {
+        stop("weights should be the same for every variable withing each row")
     }
-    if (length(weights > 0)) {
-      row_weights = rowMeans(weights)
-    } else {
-      row_weights = weights
-    }
-    return(sum(weights * (x * theta), na.rm = TRUE) -
-             sum(row_weights * log(1 + rowSums(exp(theta))), na.rm = TRUE))
+    return(sum(weights * (x * theta) - weights / ncol(x) *
+              outer(log(1 + rowSums(exp(theta))), rep(1, ncol(x))), na.rm = TRUE))
   }
 }
