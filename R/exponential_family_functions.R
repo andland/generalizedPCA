@@ -52,7 +52,7 @@ check_family <- function(x, family) {
 saturated_natural_parameters <- function(x, family, M) {
   if (family == "gaussian") {
     eta = x
-  } else if (family == "binomial") {
+  } else if (family %in% c("binomial", "multinomial")) {
     eta = abs(M) * (2 * x - 1)
     non_binary = (x != 0 & x != 1 & !is.na(x))
     if (sum(non_binary) > 0) {
@@ -75,6 +75,9 @@ exp_fam_mean <- function(theta, family) {
     mean_mat = inv.logit.mat(theta)
   } else if (family == "poisson") {
     mean_mat = exp(theta)
+  } else if (family == "multinomial") {
+    exp_theta = exp(theta)
+    mean_mat = sweep(exp_theta, 1, 1 + rowSums(exp_theta), "/")
   }
   return(mean_mat)
 }
@@ -83,8 +86,8 @@ exp_fam_mean <- function(theta, family) {
 exp_fam_variance <- function(theta, family, weights = 1.0) {
   if (family == "gaussian") {
     var_mat = matrix(1, nrow(theta), ncol(theta)) * weights
-  } else if (family == "binomial") {
-    mean_mat = inv.logit.mat(theta)
+  } else if (family %in% c("binomial", "multinomial")) {
+    mean_mat = exp_fam_mean(theta, family)
     var_mat = mean_mat * (1 - mean_mat) * weights
   } else if (family == "poisson") {
     var_mat = exp(theta) * weights
@@ -100,5 +103,16 @@ exp_fam_log_like <- function(x, theta, family, weights = 1.0) {
     return(sum(weights * (x * theta - log(1 + exp(theta))), na.rm = TRUE))
   } else if (family == "poisson") {
     return(sum(weights * (x * theta - exp(theta) - lfactorial(x)), na.rm = TRUE))
+  } else if (family == "multinomial") {
+    if (length(weights > 0) & any(apply(weights, 1, var) > 0)) {
+      stop("weights should be the same for every variable withing each row")
+    }
+    if (length(weights > 0)) {
+      row_weights = rowMeans(weights)
+    } else {
+      row_weights = weights
+    }
+    return(sum(weights * (x * theta), na.rm = TRUE) -
+             sum(row_weights * log(1 + rowSums(exp(theta))), na.rm = TRUE))
   }
 }

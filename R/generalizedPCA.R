@@ -50,7 +50,7 @@
 #' # run Poisson PCA on it
 #' gpca = generalizedPCA(mat, k = 1, M = 4, family = "poisson")
 #' @export
-generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "poisson"),
+generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "poisson", "multinomial"),
                            weights, quiet = TRUE, majorizer = c("row", "all"),
                            use_irlba = FALSE, max_iters = 1000, conv_criteria = 1e-5,
                            random_start = FALSE, start_U, start_mu, main_effects = TRUE) {
