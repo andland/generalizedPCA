@@ -68,7 +68,8 @@ saturated_natural_parameters <- function(x, family, M) {
     non_binary = (x != 0 & x != 1 & !is.na(x))
     if (sum(non_binary) > 0) {
       # TODO: give warning first time if any(rowSums(x) == 1)
-      last_cat_prob = ifelse(rowSums(x) == 1, inv.logit.mat(-M), 1 - rowSums(x))
+      last_cat_prob = ifelse(rowSums(x) > 1 - as.numeric(inv.logit.mat(-M)),
+                             as.numeric(inv.logit.mat(-M)), 1 - rowSums(x))
       logitvals = sweep(log(x), 1, log(last_cat_prob), "-")
       eta[non_binary] = logitvals[non_binary]
     }
