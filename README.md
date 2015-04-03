@@ -14,7 +14,7 @@ install_github("andland/generalizedPCA")
 ```
 
 ## Use
-The main function is `generalizedPCA()`. Like in generalized linear models, you must specify the distribution of your data. `generalizedPCA()` currently supports `"gaussian"`, `"binomial"`, or `"poisson"` data. Unlike standard PCA, it can incorporate weights and missing data.  If your data are proportions, you can use `family = "binomial"` with `weights` being a matrix of the number of opportunities. 
+The main function is `generalizedPCA()`. Like in generalized linear models, you must specify the distribution of your data. `generalizedPCA()` currently supports `"gaussian"`, `"binomial"`, `"poisson"`, or `"multinomial"` data. Unlike standard PCA, it can incorporate weights and missing data.  If your data are proportions, you can use `family = "binomial"` with `weights` being a matrix of the number of opportunities. If your data is a multinomial variable with `d` levels, the input matrix should have `d - 1` columns.
 
 The function returns `mu`, the variable main effects vector of length `d`, and `U`, the `d x k` loadings matrix.
 
