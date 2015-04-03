@@ -452,12 +452,12 @@ print.gpca <- function(x, ...) {
 #' mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
 #'
 #' \dontrun{
-#' loglikes = cv.gpca(mat, ks = 1:9, Ms = 3:6, family = "poisson")
+#' loglikes = cv.gpca(mat, ks = 1:9, Ms = 3:6, family = "poisson", quiet = FALSE)
 #' plot(loglikes)
 #' }
 #' @export
-cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "binomial", "poisson"),
-                    folds = 5, quiet = TRUE, ...) {
+cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "binomial", "poisson", "multinomial"),
+                    weights, folds = 5, quiet = TRUE, ...) {
   family = match.arg(family)
   check_family(x, family)
 
@@ -474,6 +474,10 @@ cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "bino
     cv = sample(1:folds, nrow(x), replace = TRUE)
   }
 
+  if (missing(weights) | length(weights) == 1) {
+    weights = matrix(1.0, nrow(x), ncol(x))
+  }
+
   log_likes = matrix(0, length(ks), length(Ms),
                      dimnames = list(k = ks, M = Ms))
   for (k in ks) {
@@ -485,10 +489,10 @@ cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "bino
         if (!quiet) {
           cat(".")
         }
-        gpca = generalizedPCA(x[c != cv, ], k = k, M = M, family = family, ...)
+        gpca = generalizedPCA(x[c != cv, ], k = k, M = M, family = family, weights = weights[c != cv, ], ...)
         pred_theta = predict(gpca, newdat = x[c == cv, ], type = "link")
         log_likes[k == ks, M == Ms] = log_likes[k == ks, M == Ms] +
-          exp_fam_log_like(x = x[c == cv, ], theta = pred_theta, family = family)
+          exp_fam_log_like(x = x[c == cv, ], theta = pred_theta, family = family, weights = weights[c == cv, ])
       }
       if (!quiet) {
         cat("", log_likes[k == ks, M == Ms], "\n")
