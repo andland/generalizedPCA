@@ -474,7 +474,7 @@ cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "bino
     cv = sample(1:folds, nrow(x), replace = TRUE)
   }
 
-  if (missing(weights) | length(weights) == 1) {
+  if (missing(weights) || length(weights) == 1) {
     weights = matrix(1.0, nrow(x), ncol(x))
   }
 
