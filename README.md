@@ -21,7 +21,7 @@ The function returns `mu`, the variable main effects vector of length `d`, and `
 ## Details
 `generalizedPCA()` estimates the natural parameters of an exponential family distribution in a lower dimensional space. This is done by projecting the natural parameters from the saturated model. A rank-`k` projection matrix, or equivalently a `d x k` orthogonal matrix, is solved for to minimize the deviance. 
 
-For some distributions, the natural parameters from the saturated model are either negative or positive infinity, and an additional tuning parameter `M` is needed to approximate them. This occurs when `family = "binomial"` and your data include `0`'s or `1`'s or when `family = "poisson"` and your data include `0`'s. I usually use `cv.gpca()` to select `M`. Typical values are in the range `3` to `10`.
+For some distributions, the natural parameters from the saturated model are either negative or positive infinity, and an additional tuning parameter `M` is needed to approximate them. This occurs when `family = "binomial"` and your data include `0`'s or `1`'s or when `family = "poisson"` and your data include `0`'s. You can use `cv.gpca()` to select `M` by cross validation. Typical values are in the range of `3` to `10`.
 
 ## Methods
 The generalizedPCA class, `gpca`, has several methods to make data analysis easier.
