@@ -63,14 +63,23 @@ saturated_natural_parameters <- function(x, family, M) {
     eta = log(x)
     eta[x==0] = -abs(M)
   } else if (family == "multinomial") {
-    # TODO: check this! Correct if 0/1s. Heuristic if not
+    # TODO: check this! Correct if 0/1s.
     eta = abs(M) * (2 * x - 1)
     non_binary = (x != 0 & x != 1 & !is.na(x))
     if (sum(non_binary) > 0) {
       # TODO: give warning first time if any(rowSums(x) == 1)
-      last_cat_prob = ifelse(rowSums(x) > 1 - as.numeric(inv.logit.mat(-as.numeric(M))),
-                             as.numeric(inv.logit.mat(-as.numeric(M))), 1 - rowSums(x))
+      # TODO: doesn't deal with NAs,
+      #   although typically a whole categorical variable would be NA
+
+      # last_cat_prob = ifelse(rowSums(x) > 1 - as.numeric(inv.logit.mat(-as.numeric(M))),
+      #                        as.numeric(inv.logit.mat(-as.numeric(M))), 1 - rowSums(x))
+      # logitvals = sweep(log(x), 1, log(last_cat_prob), "-")
+
+      # Below is in line with what is in tech report
+      last_cat_prob = 1 - rowSums(x)
+      last_cat_prob[last_cat_prob < exp(-as.numeric(M))] = exp(-as.numeric(M))
       logitvals = sweep(log(x), 1, log(last_cat_prob), "-")
+
       eta[non_binary] = logitvals[non_binary]
     }
   }
