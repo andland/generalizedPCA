@@ -53,7 +53,7 @@
 generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "poisson", "multinomial"),
                            weights, quiet = TRUE, majorizer = c("row", "all"),
                            use_irlba = FALSE, max_iters = 1000, conv_criteria = 1e-5,
-                           random_start = FALSE, start_U, start_mu, main_effects = TRUE) {
+                           random_start = FALSE, start_U, start_mu, main_effects = TRUE, validation) {
   use_irlba = use_irlba && requireNamespace("irlba", quietly = TRUE)
 
   family = match.arg(family)
@@ -79,8 +79,23 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
   }
 
   if (M == 0) {
+    if (any(is.na(x))) {
+      stop("Cannot solve for M with missing weights")
+    }
+    if (any(weights != 1)) {
+      warning("Solving for M does not incorporate M")
+    }
     M = 4
     solve_M = TRUE
+    if (!missing(validation)) {
+      if (ncol(validation) != ncol(x)) {
+        stop("validation does not have the same variables as x")
+      }
+      validation = as.matrix(validation)
+      M_mat = exp_fam_sat_ind_mat(validation, family)
+    } else {
+      M_mat = exp_fam_sat_ind_mat(x, family)
+    }
   } else {
     solve_M = FALSE
   }
@@ -147,16 +162,31 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     last_M = M
     last_mu = mu
 
-    # TODO: solve for M with Poisson
-    # if (solve_M) {
-    #   Phat = inv.logit.mat(theta)
-    #   M_slope = sum(((x - Phat) * (q %*% tcrossprod(U)))[q != 0])
-    #   M_curve = -sum((Phat * (1 - Phat) * (q %*% U %*% t(U))^2)[q != 0])
-    #   M = M - M_slope / M_curve
-    #
-    #   eta = M * q + missing_mat * outer(rep(1, n), mu)
-    #   theta = outer(rep(1, n), mu) + scale(eta, center = mu, scale = FALSE) %*% tcrossprod(U)
-    # }
+    # TODO: incorporate weights in variance and slope / curve and missing data
+    if (solve_M) {
+      gpca_obj = structure(list(mu = mu, U = U, M = M, family = family),
+                             class = "gpca")
+      if (missing(validation)) {
+        fitted_theta = predict(gpca_obj, newdata = x, type = "link")
+      } else {
+        fitted_theta = predict(gpca_obj, newdata = validation, type = "link")
+      }
+      fitted_mean = exp_fam_mean(fitted_theta, family)
+      fitted_var = exp_fam_variance(fitted_theta, family)
+
+      if (missing(validation)) {
+        M_slope = sum(((fitted_mean - x) * (M_mat %*% tcrossprod(U)))[!is.na(M_mat)])
+      } else {
+        M_slope = sum(((fitted_mean - validation) * (M_mat %*% tcrossprod(U)))[!is.na(M_mat)])
+      }
+      M_curve = sum((fitted_var * (M_mat %*% tcrossprod(U))^2)[!is.na(M_mat)])
+
+      M = max(M - M_slope / M_curve, 0)
+
+      eta = saturated_natural_parameters(x, family, M = M) + missing_mat * outer(ones, mu)
+      eta_centered = scale(eta, center = mu, scale = FALSE)
+      theta = outer(ones, mu) + eta_centered %*% tcrossprod(U)
+    }
 
     first_dir = exp_fam_mean(theta, family)
     second_dir = exp_fam_variance(theta, family, weights)

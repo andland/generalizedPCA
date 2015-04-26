@@ -131,3 +131,21 @@ exp_fam_log_like <- function(x, theta, family, weights = 1.0) {
               outer(log(1 + rowSums(exp(theta))), rep(1, ncol(x))), na.rm = TRUE))
   }
 }
+
+#' @export
+exp_fam_sat_ind_mat <- function(x, family) {
+  if (family == "gaussian") {
+    return(matrix(0, nrow(x), ncol(x)))
+  } else if (family == "binomial") {
+    # set 1's to 1, 0's to -1, and everything else to 0
+    return((x == 1) - (x == 0))
+  } else if (family == "poisson") {
+    return((x == 0) * -1.0)
+  } else if (family == "multinomial") {
+    # first see if last cat == 0 and x between 0 and 1
+    last_cat_prob_zero = rowSums(x) > (1 - 1e-3)
+    q = outer(last_cat_prob_zero, rep(TRUE, ncol(x))) & x > 0 & x < 1
+    # then add in exact 0's and 1's
+    q = q + (x == 1) - (x == 0)
+  }
+}
