@@ -8,7 +8,7 @@
 #' @param k number of principal components to return
 #' @param M value to approximate the saturated model
 #' @param family exponential family distribution of data
-#' @param weights a matrix of the same size as the \code{x} with data weights
+#' @param weights an optional matrix of the same size as the \code{x} with data weights
 #' @param quiet logical; whether the calculation should give feedback
 #' @param majorizer how to majorize the deviance. \code{"row"} gives
 #'  tighter majorization, but may take longer to calculate each iteration.
@@ -28,7 +28,7 @@
 #' following components:
 #' \item{mu}{the main effects}
 #' \item{U}{a \code{k}-dimentional orthonormal matrix with the loadings}
-#' \item{PCs}{the princial components}
+#' \item{PCs}{the princial component scores}
 #' \item{M}{the parameter inputed}
 #' \item{family}{the exponential family used}
 #' \item{iters}{number of iterations required for convergence}
@@ -167,7 +167,7 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     last_M = M
     last_mu = mu
 
-    # TODO: incorporate weights in variance and slope / curve and missing data
+    # TODO: incorporate missing data
     if (solve_M) {
       gpca_obj = structure(list(mu = mu, U = U, M = M, family = family),
                              class = "gpca")
@@ -330,11 +330,11 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
 predict.gpca <- function(object, newdata, type = c("PCs", "link", "response"), ...) {
   type = match.arg(type)
 
-  # TODO: check that newdata is of same family as object$family
-
   if (missing(newdata)) {
     PCs = object$PCs
   } else {
+    check_family(newdata, object$family)
+
     eta = saturated_natural_parameters(newdata, object$family, object$M) +
       is.na(newdata) * outer(rep(1, nrow(newdata)), object$mu)
     PCs = scale(eta, center = object$mu, scale = FALSE) %*% object$U
@@ -465,7 +465,7 @@ print.gpca <- function(x, ...) {
 #' @param ks the different dimensions \code{k} to try
 #' @param Ms the different approximations to the saturated model \code{M} to try
 #' @param family exponential family distribution of data
-#' @param weights a matrix of the same size as the \code{x} with data weights
+#' @param weights an optional matrix of the same size as the \code{x} with data weights
 #' @param folds if \code{folds} is a scalar, then it is the number of folds. If
 #'  it is a vector, it should be the same length as the number of rows in \code{x}
 #' @param quiet logical; whether the function should display progress

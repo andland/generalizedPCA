@@ -19,7 +19,7 @@ generalizedPCA(x, k = 2, M = 4, family = c("gaussian", "binomial",
 
 \item{family}{exponential family distribution of data}
 
-\item{weights}{a matrix of the same size as the \code{x} with data weights}
+\item{weights}{an optional matrix of the same size as the \code{x} with data weights}
 
 \item{quiet}{logical; whether the calculation should give feedback}
 

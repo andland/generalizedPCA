@@ -16,7 +16,7 @@ cv.gpca(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "binomial",
 
 \item{family}{exponential family distribution of data}
 
-\item{weights}{a matrix of the same size as the \code{x} with data weights}
+\item{weights}{an optional matrix of the same size as the \code{x} with data weights}
 
 \item{folds}{if \code{folds} is a scalar, then it is the number of folds. If
 it is a vector, it should be the same length as the number of rows in \code{x}}
