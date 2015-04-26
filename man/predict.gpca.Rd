@@ -23,7 +23,7 @@ If missing, will use the data that \code{object} was fit on}
 Predict generalized PCA scores or reconstruction on new data
 }
 \examples{
-# construct a low rank matrices in the natural parameter scale
+# construct a low rank matrices in the natural parameter space
 rows = 100
 cols = 10
 set.seed(1)

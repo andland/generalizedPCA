@@ -5,9 +5,10 @@
 \title{Generalized Principal Component Analysis}
 \usage{
 generalizedPCA(x, k = 2, M = 4, family = c("gaussian", "binomial",
-  "poisson"), weights, quiet = TRUE, majorizer = c("row", "all"),
-  use_irlba = FALSE, max_iters = 1000, conv_criteria = 1e-05,
-  random_start = FALSE, start_U, start_mu, main_effects = TRUE)
+  "poisson", "multinomial"), weights, quiet = TRUE, majorizer = c("row",
+  "all"), use_irlba = FALSE, max_iters = 1000, conv_criteria = 1e-05,
+  random_start = FALSE, start_U, start_mu, main_effects = TRUE, validation,
+  val_weights)
 }
 \arguments{
 \item{x}{matrix of either binary, proportions, count, or continuous data}
@@ -63,7 +64,7 @@ Dimension reduction for exponential family data by extending Pearson's
 PCA formulation
 }
 \examples{
-# construct a low rank matrix in the natural parameter scale
+# construct a low rank matrix in the natural parameter space
 rows = 100
 cols = 10
 set.seed(1)

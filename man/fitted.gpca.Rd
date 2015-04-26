@@ -18,7 +18,7 @@ parameter scale and \code{type = "response"} gives output on the response scale}
 Fit a lower dimentional representation of the exponential family matrix using generalized PCA
 }
 \examples{
-# construct a low rank matrix in the natural parameter scale
+# construct a low rank matrix in the natural parameter space
 rows = 100
 cols = 10
 set.seed(1)

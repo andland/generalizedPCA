@@ -15,7 +15,7 @@
 Plot cross validation results generalized PCA
 }
 \examples{
-# construct a low rank matrix in the natural parameter scale
+# construct a low rank matrix in the natural parameter space
 rows = 100
 cols = 10
 set.seed(1)

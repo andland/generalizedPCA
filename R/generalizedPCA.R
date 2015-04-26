@@ -38,7 +38,7 @@
 #'    If \code{main_effects = TRUE}, the null model is just the main effects, otherwise
 #'    the null model estimates 0 for all natural parameters.}
 #' @examples
-#' # construct a low rank matrix in the natural parameter spcace
+#' # construct a low rank matrix in the natural parameter space
 #' rows = 100
 #' cols = 10
 #' set.seed(1)
@@ -310,7 +310,7 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
 #'  \code{type = "response"} gives matrix on the response scale
 #' @param ... Additional arguments
 #' @examples
-#' # construct a low rank matrices in the natural parameter spcace
+#' # construct a low rank matrices in the natural parameter space
 #' rows = 100
 #' cols = 10
 #' set.seed(1)
@@ -358,7 +358,7 @@ predict.gpca <- function(object, newdata, type = c("PCs", "link", "response"), .
 #'  parameter scale and \code{type = "response"} gives output on the response scale
 #' @param ... Additional arguments
 #' @examples
-#' # construct a low rank matrix in the natural parameter spcace
+#' # construct a low rank matrix in the natural parameter space
 #' rows = 100
 #' cols = 10
 #' set.seed(1)
@@ -397,7 +397,7 @@ fitted.gpca <- function(object, type = c("link", "response"), ...) {
 #' loadings, \code{type = "scores"} plots the loadings first 2 principal component scores
 #' @param ... Additional arguments
 #' @examples
-#' # construct a low rank matrix in the natural parameter spcace
+#' # construct a low rank matrix in the natural parameter space
 #' rows = 100
 #' cols = 10
 #' set.seed(1)
@@ -470,6 +470,7 @@ print.gpca <- function(x, ...) {
 #' @param ks the different dimensions \code{k} to try
 #' @param Ms the different approximations to the saturated model \code{M} to try
 #' @param family exponential family distribution of data
+#' @param weights a matrix of the same size as the \code{x} with data weights
 #' @param folds if \code{folds} is a scalar, then it is the number of folds. If
 #'  it is a vector, it should be the same length as the number of rows in \code{x}
 #' @param quiet logical; whether the function should display progress
@@ -478,7 +479,7 @@ print.gpca <- function(x, ...) {
 #' @return A matrix of the CV log likelihood with \code{k} in rows and
 #'  \code{M} in columns
 #' @examples
-#' # construct a low rank matrix in the natural parameter spcace
+#' # construct a low rank matrix in the natural parameter space
 #' rows = 100
 #' cols = 10
 #' set.seed(1)
@@ -552,7 +553,7 @@ cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "bino
 #' @param object a \code{cv.gpca} object
 #' @param ... Additional arguments
 #' @examples
-#' # construct a low rank matrix in the natural parameter spcace
+#' # construct a low rank matrix in the natural parameter space
 #' rows = 100
 #' cols = 10
 #' set.seed(1)

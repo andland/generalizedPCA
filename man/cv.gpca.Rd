@@ -5,7 +5,7 @@
 \title{CV for generalized PCA}
 \usage{
 cv.gpca(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "binomial",
-  "poisson"), folds = 5, quiet = TRUE, ...)
+  "poisson", "multinomial"), weights, folds = 5, quiet = TRUE, ...)
 }
 \arguments{
 \item{x}{matrix of either binary, count, or continuous data}
@@ -15,6 +15,8 @@ cv.gpca(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "binomial",
 \item{Ms}{the different approximations to the saturated model \code{M} to try}
 
 \item{family}{exponential family distribution of data}
+
+\item{weights}{a matrix of the same size as the \code{x} with data weights}
 
 \item{folds}{if \code{folds} is a scalar, then it is the number of folds. If
 it is a vector, it should be the same length as the number of rows in \code{x}}
@@ -31,7 +33,7 @@ A matrix of the CV log likelihood with \code{k} in rows and
 Run cross validation on dimension and \code{M} for generalized PCA
 }
 \examples{
-# construct a low rank matrix in the natural parameter scale
+# construct a low rank matrix in the natural parameter space
 rows = 100
 cols = 10
 set.seed(1)
@@ -41,7 +43,7 @@ mat_np = outer(rnorm(rows), rnorm(cols))
 mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
 
 \dontrun{
-loglikes = cv.gpca(mat, ks = 1:9, Ms = 3:6, family = "poisson")
+loglikes = cv.gpca(mat, ks = 1:9, Ms = 3:6, family = "poisson", quiet = FALSE)
 plot(loglikes)
 }
 }
