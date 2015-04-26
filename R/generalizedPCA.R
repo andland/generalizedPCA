@@ -443,11 +443,6 @@ plot.gpca <- function(object, type = c("trace", "loadings", "scores"), ...) {
   return(p)
 }
 
-#' @title Print generalized PCA object
-#'
-#' @param x generalized PCA object
-#' @param ... Additional arguments
-#'
 #' @export
 print.gpca <- function(x, ...) {
   cat(nrow(x$PCs), "rows and ")
