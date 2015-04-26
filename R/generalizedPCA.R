@@ -53,7 +53,8 @@
 generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "poisson", "multinomial"),
                            weights, quiet = TRUE, majorizer = c("row", "all"),
                            use_irlba = FALSE, max_iters = 1000, conv_criteria = 1e-5,
-                           random_start = FALSE, start_U, start_mu, main_effects = TRUE, validation) {
+                           random_start = FALSE, start_U, start_mu, main_effects = TRUE,
+                           validation, val_weights) {
   use_irlba = use_irlba && requireNamespace("irlba", quietly = TRUE)
 
   family = match.arg(family)
@@ -82,14 +83,18 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     if (any(is.na(x))) {
       stop("Cannot solve for M with missing weights")
     }
-    if (any(weights != 1)) {
-      warning("Solving for M does not incorporate M")
-    }
     M = 4
     solve_M = TRUE
     if (!missing(validation)) {
       if (ncol(validation) != ncol(x)) {
         stop("validation does not have the same variables as x")
+      }
+      if (missing(val_weights)) {
+        val_weights = 1.0
+      } else {
+        if (!all(dim(val_weights) == dim(validation))) {
+          stop("validation and val_weights are not the same dimension")
+        }
       }
       validation = as.matrix(validation)
       M_mat = exp_fam_sat_ind_mat(validation, family)
@@ -172,12 +177,13 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
         fitted_theta = predict(gpca_obj, newdata = validation, type = "link")
       }
       fitted_mean = exp_fam_mean(fitted_theta, family)
-      fitted_var = exp_fam_variance(fitted_theta, family)
 
       if (missing(validation)) {
-        M_slope = sum(((fitted_mean - x) * (M_mat %*% tcrossprod(U)))[!is.na(M_mat)])
+        M_slope = sum(((fitted_mean - x) * weights * (M_mat %*% tcrossprod(U)))[!is.na(M_mat)])
+        fitted_var = exp_fam_variance(fitted_theta, family, weights)
       } else {
-        M_slope = sum(((fitted_mean - validation) * (M_mat %*% tcrossprod(U)))[!is.na(M_mat)])
+        M_slope = sum(((fitted_mean - validation) * val_weights * (M_mat %*% tcrossprod(U)))[!is.na(M_mat)])
+        fitted_var = exp_fam_variance(fitted_theta, family, val_weights)
       }
       M_curve = sum((fitted_var * (M_mat %*% tcrossprod(U))^2)[!is.na(M_mat)])
 
