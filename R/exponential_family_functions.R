@@ -37,6 +37,13 @@ log_like_Bernoulli <- function(x, theta, q) {
 #' @export
 check_family <- function(x, family) {
   distinct_vals = unique(c(x[!is.na(x)]))
+  if (any(distinct_vals < 0 | distinct_vals > 1) &
+      family %in% c("binomial", "multinomial")) {
+    stop(paste0(family, " family with data outside [0, 1]"))
+  }
+  if (any(distinct_vals < 0) & family == "poisson") {
+    stop("Negative data with poisson family")
+  }
   if (all(distinct_vals %in% c(0, 1))) {
     if (!(family %in% c("binomial", "multinomial"))) {
       message("All entries are binary. Are you sure you didn't mean binomial?")
@@ -46,15 +53,8 @@ check_family <- function(x, family) {
       message("All entries are counts. Are you sure you didn't mean poisson?")
     }
   }
-  if (any(distinct_vals < 0 | distinct_vals > 1) &
-      family %in% c("binomial", "multinomial")) {
-    warning(paste0(family, " family with data outside [0, 1]"))
-  }
-  if (any(distinct_vals < 0) & family == "poisson") {
-    warning("Negative data with poisson family")
-  }
   if (any(distinct_vals %% 1 != 0) & family == "poisson") {
-    message("Non-integer data with poisson data")
+    message("Non-integer data with poisson data. Did you want family = guassian?")
   }
 }
 
