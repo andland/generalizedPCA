@@ -49,7 +49,7 @@ An S3 object of class \code{gpca} which is a list with the
 following components:
 \item{mu}{the main effects}
 \item{U}{a \code{k}-dimentional orthonormal matrix with the loadings}
-\item{PCs}{the princial components}
+\item{PCs}{the princial component scores}
 \item{M}{the parameter inputed}
 \item{family}{the exponential family used}
 \item{iters}{number of iterations required for convergence}
