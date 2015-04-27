@@ -46,6 +46,16 @@ check_family <- function(x, family) {
       message("All entries are counts. Are you sure you didn't mean poisson?")
     }
   }
+  if (any(distinct_vals < 0 | distinct_vals > 1) &
+      family %in% c("binomial", "multinomial")) {
+    warning(paste0(family, " family with data outside [0, 1]"))
+  }
+  if (any(distinct_vals < 0) & family == "poisson") {
+    warning("Negative data with poisson family")
+  }
+  if (any(distinct_vals %% 1 != 0) & family == "poisson") {
+    message("Non-integer data with poisson data")
+  }
 }
 
 #' @export
