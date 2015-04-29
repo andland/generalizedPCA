@@ -113,7 +113,7 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
 
   # if it is standard PCA, only need 1 iteration
   if (family == "gaussian" & all(weights == 1) & sum(missing_mat) == 0) {
-    max_iters = 1
+    max_iters = 0
   }
 
   # Initialize #
@@ -256,7 +256,7 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
   }
 
   # test if loss function increases
-  if ((loss_trace[m + 1] - loss_trace[m]) > (1e-10)) {
+  if (max_iters > 0 && (loss_trace[m + 1] - loss_trace[m]) > (1e-10)) {
     U = last_U
     mu = last_mu
     M = last_M
@@ -271,6 +271,8 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     } else {
       message("Deviance increased in last iteration.")
     }
+  } else if (max_iters == 0) {
+    m = 0
   }
 
   # calculate the null log likelihood for % deviance explained
