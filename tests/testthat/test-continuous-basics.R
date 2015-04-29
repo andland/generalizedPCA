@@ -16,8 +16,7 @@ pca = svd(scale(mat, center = pca_mu, scale = FALSE))
 gpca2 = gpca
 gpca$mu = pca_mu
 gpca$U = matrix(pca$v[, 1:k], cols, k)
-# expect_equal(gpca$mu, pca_mu)
-# expect_equal(pca$v[, 1], gpca$U[, 1])
+
 
 pred1 = predict(gpca, mat)
 pred1l = predict(gpca, mat, type = "link")
@@ -54,6 +53,9 @@ test_that("k = 1 same fits as standard PCA", {
   expect_equal(pred1r, pred2r)
   expect_equal(pred1l, pred2l)
   # Don't compare fitted, because they rely on $PCs
+  expect_equal(gpca$mu, pca_mu)
+  expect_equal(pca$v[, 1], gpca$U[, 1])
+  expect_equal(pca$u[, 1] * pca$d[1], gpca$PCs[, 1])
 })
 
 rm(gpca, pred1, pred1l, pred1r, fit1l, fit1r)
