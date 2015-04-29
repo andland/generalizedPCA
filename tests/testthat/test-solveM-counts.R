@@ -47,9 +47,9 @@ gpca = generalizedPCA(matp, k = k, M = 0, family = "multinomial", weights = wght
 gpca_val = generalizedPCA(matp, k = k, M = 0, family = "multinomial", weights = wghts,
                           validation = matp_test, val_weights = wghts_test)
 
-pred1 = predict(gpca, mat)
-pred1l = predict(gpca, mat, type = "link")
-pred1r = predict(gpca, mat, type = "response")
+pred1 = predict(gpca, matp)
+pred1l = predict(gpca, matp, type = "link")
+pred1r = predict(gpca, matp, type = "response")
 fit1l = fitted(gpca, type = "link")
 fit1r = fitted(gpca, type = "response")
 
