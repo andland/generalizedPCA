@@ -7,8 +7,8 @@
 generalizedPCA(x, k = 2, M = 4, family = c("gaussian", "binomial",
   "poisson", "multinomial"), weights, quiet = TRUE, majorizer = c("row",
   "all"), use_irlba = FALSE, max_iters = 1000, conv_criteria = 1e-05,
-  random_start = FALSE, start_U, start_mu, main_effects = TRUE, validation,
-  val_weights)
+  random_start = FALSE, start_U, start_mu, main_effects = TRUE,
+  normalize = FALSE, validation, val_weights)
 }
 \arguments{
 \item{x}{matrix of either binary, proportions, count, or continuous data}
@@ -43,6 +43,8 @@ function will use an eigen-decomposition as starting value}
 \item{start_mu}{starting value for mu. Only used if \code{main_effects = TRUE}}
 
 \item{main_effects}{logical; whether to include main effects in the model}
+
+\item{normalize}{logical; whether to weight the variables to they all have equal influence}
 }
 \value{
 An S3 object of class \code{gpca} which is a list with the

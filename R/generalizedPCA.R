@@ -23,6 +23,7 @@
 #' @param start_U starting value for the orthogonal matrix
 #' @param start_mu starting value for mu. Only used if \code{main_effects = TRUE}
 #' @param main_effects logical; whether to include main effects in the model
+#' @param normalize logical; whether to weight the variables to they all have equal influence
 #'
 #' @return An S3 object of class \code{gpca} which is a list with the
 #' following components:
@@ -54,13 +55,19 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
                            weights, quiet = TRUE, majorizer = c("row", "all"),
                            use_irlba = FALSE, max_iters = 1000, conv_criteria = 1e-5,
                            random_start = FALSE, start_U, start_mu, main_effects = TRUE,
-                           validation, val_weights) {
+                           normalize = FALSE, validation, val_weights) {
   use_irlba = use_irlba && requireNamespace("irlba", quietly = TRUE)
 
   family = match.arg(family)
   check_family(x, family)
 
   majorizer = match.arg(majorizer)
+
+  x = as.matrix(x)
+  missing_mat = is.na(x)
+  n = nrow(x)
+  d = ncol(x)
+  ones = rep(1, n)
 
   if (missing(weights)) {
     weights = 1.0
@@ -77,6 +84,40 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
       stop("x and weights are not the same dimension")
     }
     sum_weights = sum(weights)
+  }
+
+  # calculate the null log likelihood for % deviance explained and normalization
+  if (main_effects) {
+    if (length(weights) == 1) {
+      weighted_col_means = colMeans(x, na.rm = TRUE)
+    } else {
+      weighted_col_means = colSums(x * weights, na.rm = TRUE) / colSums(weights)
+    }
+    null_theta = as.numeric(saturated_natural_parameters(matrix(weighted_col_means, 1), family, M))
+  } else {
+    null_theta = rep(0, d)
+  }
+
+  if (normalize) {
+    if (any(apply(x, 2, var, na.rm = TRUE) == 0)) {
+      stop("At least one variable has variance of 0. Cannot normalize")
+    }
+
+    eta_sat_nat = saturated_natural_parameters(x, family, M = Inf)
+
+    norms = sapply(1:d, function(j) {
+      2 * (exp_fam_log_like(x[, j], eta_sat_nat[, j], family, weights) -
+             exp_fam_log_like(x[, j], rep(null_theta[j], n), family, weights))
+      }) / n
+    if (any(norms <= 0)) {
+      stop("Normalization caused weights to be <= 0")
+    }
+
+    if (length(weights) == 1) {
+      weights = outer(ones, 1 / norms)
+    } else {
+      weights = sweep(weights, 2, 1 / norms, "*")
+    }
   }
 
   if (M == 0) {
@@ -104,12 +145,6 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
   } else {
     solve_M = FALSE
   }
-
-  x = as.matrix(x)
-  missing_mat = is.na(x)
-  n = nrow(x)
-  d = ncol(x)
-  ones = rep(1, n)
 
   # if it is standard PCA, only need 1 iteration
   if (family == "gaussian" & all(weights == 1) & sum(missing_mat) == 0) {
@@ -141,9 +176,9 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     U = qr.Q(qr(U))
   } else {
     if (use_irlba) {
-      udv = irlba::irlba(eta_centered, nu = k, nv = k)
+      udv = irlba::irlba(scale(eta, center = mu, scale = normalize), nu = k, nv = k)
     } else {
-      udv = svd(eta_centered)
+      udv = svd(scale(eta, center = mu, scale = normalize))
     }
     U = matrix(udv$v[, 1:k], d, k)
   }
@@ -275,17 +310,6 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     m = 0
   }
 
-  # calculate the null log likelihood for % deviance explained
-  if (main_effects) {
-    if (length(weights) == 1) {
-      weighted_col_means = colMeans(x, na.rm = TRUE)
-    } else {
-      weighted_col_means = colSums(x * weights, na.rm = TRUE) / colSums(weights)
-    }
-    null_theta = as.numeric(saturated_natural_parameters(matrix(weighted_col_means, 1), family, M))
-  } else {
-    null_theta = rep(0, d)
-  }
   null_loglike = exp_fam_log_like(x, outer(ones, null_theta), family, weights)
 
   object <- list(mu = mu,
