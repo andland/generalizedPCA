@@ -12,8 +12,7 @@ License: MIT + file LICENSE
 LazyData: TRUE
 URL: https://github.com/andland/generalizedPCA
 Imports:
-    ggplot2,
-    reshape2
+    ggplot2
 Suggests:
     irlba,
     testthat
