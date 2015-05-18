@@ -37,12 +37,15 @@ log_like_Bernoulli <- function(x, theta, q) {
 #' @export
 check_family <- function(x, family) {
   distinct_vals = unique(c(x[!is.na(x)]))
-  if (any(distinct_vals < 0 | distinct_vals > 1) &
-      family %in% c("binomial", "multinomial")) {
+  if (family %in% c("binomial", "multinomial") &&
+      any(distinct_vals < 0 | distinct_vals > 1)) {
     stop(paste0(family, " family with data outside [0, 1]"))
   }
-  if (any(distinct_vals < 0) & family == "poisson") {
+  if (any(family == "poisson" && distinct_vals < 0)) {
     stop("Negative data with poisson family")
+  }
+  if (family == "multinomial" && any(rowSums(x) > 1)) {
+    stop(paste0(family, " family must have row sums <= 1"))
   }
   if (all(distinct_vals %in% c(0, 1))) {
     if (!(family %in% c("binomial", "multinomial"))) {
