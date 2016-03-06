@@ -63,22 +63,7 @@ test_that("k = 2 dimensions", {
   expect_equal(dim(fit1r), c(rows, cols))
 })
 
-is_more_than_equal <- function (expected, label = NULL, ...)
-{
-  if (is.null(label)) {
-    label <- testthat:::find_expr("expected")
-  }
-  else if (!is.character(label) || length(label) != 1) {
-    label <- deparse(label)
-  }
-  function(actual) {
-    diff <- expected - actual
-    expectation(diff <= 0, paste0("not more than ", label,
-                                  ". Difference: ", format(diff)), paste0("is more than"))
-  }
-}
-
 test_that("response between non-negative", {
-  expect_that(min(pred1r), is_more_than_equal(0))
-  expect_that(min(fit1r), is_more_than_equal(0))
+  expect_gte(min(pred1r), 0)
+  expect_gte(min(fit1r), 0)
 })

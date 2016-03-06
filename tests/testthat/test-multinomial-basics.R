@@ -63,49 +63,18 @@ test_that("k = 2 dimensions", {
   expect_equal(dim(fit1r), c(rows, cols))
 })
 
-is_less_than_equal <- function (expected, label = NULL, ...)
-{
-  if (is.null(label)) {
-    label <- testthat:::find_expr("expected")
-  }
-  else if (!is.character(label) || length(label) != 1) {
-    label <- deparse(label)
-  }
-  function(actual) {
-    diff <- expected - actual
-    expectation(diff >= 0, paste0("not less than ", label,
-                                  ". Difference: ", format(diff)), paste0("is less than ",
-                                                                          label))
-  }
-}
-
-is_more_than_equal <- function (expected, label = NULL, ...)
-{
-  if (is.null(label)) {
-    label <- testthat:::find_expr("expected")
-  }
-  else if (!is.character(label) || length(label) != 1) {
-    label <- deparse(label)
-  }
-  function(actual) {
-    diff <- expected - actual
-    expectation(diff <= 0, paste0("not more than ", label,
-                                  ". Difference: ", format(diff)), paste0("is more than"))
-  }
-}
-
 test_that("response between 0 and 1", {
-  expect_that(min(pred1r), is_more_than_equal(0))
-  expect_that(min(fit1r), is_more_than_equal(0))
+  expect_gte(min(pred1r), 0)
+  expect_gte(min(fit1r), 0)
 
-  expect_that(max(pred1r), is_less_than_equal(1))
-  expect_that(max(fit1r), is_less_than_equal(1))
+  expect_lte(max(pred1r), 1)
+  expect_lte(max(fit1r), 1)
 })
 
 test_that("fitted row sums = 1", {
-  expect_that(min(rowSums(pred1r)), is_more_than_equal(0))
-  expect_that(min(rowSums(fit1r)), is_more_than_equal(0))
+  expect_gte(min(rowSums(pred1r)), 0)
+  expect_gte(min(rowSums(fit1r)), 0)
 
-  expect_that(max(rowSums(pred1r)), is_less_than_equal(1))
-  expect_that(max(rowSums(fit1r)), is_less_than_equal(1))
+  expect_lte(max(rowSums(pred1r)), 1)
+  expect_lte(max(rowSums(fit1r)), 1)
 })

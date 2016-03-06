@@ -15,4 +15,4 @@ Imports:
     ggplot2
 Suggests:
     irlba,
-    testthat
+    testthat (>= 0.11.0)
