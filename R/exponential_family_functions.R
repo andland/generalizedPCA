@@ -13,7 +13,8 @@
 #' inv.logit.mat(mat)
 #' @export
 inv.logit.mat <- function(x, min = 0, max = 1) {
-  .Call(inv_logit_mat, x, min, max)
+  # .Call("inv_logit_mat", x, min, max, PACKAGE = "generalizedPCA")
+  logisticPCA::inv.logit.mat(x, min, max)
 }
 
 #' @title Bernoulli Log Likelihood
@@ -26,15 +27,17 @@ inv.logit.mat <- function(x, min = 0, max = 1) {
 #'  same dimensions as x
 #' @param q instead of x, you can input matrix q which is
 #'  -1 if \code{x = 0}, 1 if \code{x = 1}, and 0 if \code{is.na(x)}
+#' @export
 log_like_Bernoulli <- function(x, theta, q) {
-  if (!missing(x)) {
-    q = 2 * as.matrix(x) - 1
-    q[is.na(q)] <- 0
-  }
-  .Call(compute_loglik, q, theta)
+#   if (!missing(x)) {
+#     q = 2 * as.matrix(x) - 1
+#     q[is.na(q)] <- 0
+#   }
+#   .Call(compute_loglik, q, theta)
+  logisticPCA::log_like_Bernoulli(x, theta, q)
 }
 
-#' @export
+# @export
 check_family <- function(x, family) {
   distinct_vals = unique(c(x[!is.na(x)]))
   if (family %in% c("binomial", "multinomial") &&
@@ -61,7 +64,7 @@ check_family <- function(x, family) {
   }
 }
 
-#' @export
+# @export
 saturated_natural_parameters <- function(x, family, M) {
   if (family == "gaussian") {
     eta = x
@@ -100,7 +103,7 @@ saturated_natural_parameters <- function(x, family, M) {
   return(eta)
 }
 
-#' @export
+# @export
 exp_fam_mean <- function(theta, family) {
   if (family == "gaussian") {
     mean_mat = theta
@@ -115,7 +118,7 @@ exp_fam_mean <- function(theta, family) {
   return(mean_mat)
 }
 
-#' @export
+# @export
 exp_fam_variance <- function(theta, family, weights = 1.0) {
   if (family == "gaussian") {
     var_mat = matrix(1, nrow(theta), ncol(theta)) * weights
@@ -128,7 +131,7 @@ exp_fam_variance <- function(theta, family, weights = 1.0) {
   return(var_mat)
 }
 
-#' @export
+# @export
 exp_fam_log_like <- function(x, theta, family, weights = 1.0) {
   if (family == "gaussian") {
     return(-0.5 * sum(weights * (x - theta)^2, na.rm = TRUE))
@@ -145,7 +148,7 @@ exp_fam_log_like <- function(x, theta, family, weights = 1.0) {
   }
 }
 
-#' @export
+# @export
 exp_fam_sat_ind_mat <- function(x, family) {
   if (family == "gaussian") {
     return(matrix(0, nrow(x), ncol(x)))

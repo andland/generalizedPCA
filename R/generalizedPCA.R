@@ -24,6 +24,8 @@
 #' @param start_mu starting value for mu. Only used if \code{main_effects = TRUE}
 #' @param main_effects logical; whether to include main effects in the model
 #' @param normalize logical; whether to weight the variables to they all have equal influence
+#' @param validation a validation dataset to select \code{m} with
+#' @param val_weights weights associated with validation data
 #'
 #' @return An S3 object of class \code{gpca} which is a list with the
 #' following components:
@@ -328,6 +330,8 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
 
 #' @title Predict generalized PCA scores or reconstruction on new data
 #'
+#' @description Predict generalized PCA scores or reconstruction on new data
+#'
 #' @param object generalized PCA object
 #' @param newdata matrix of the same exponential family as in \code{object}.
 #'  If missing, will use the data that \code{object} was fit on
@@ -417,7 +421,7 @@ fitted.gpca <- function(object, type = c("link", "response"), ...) {
 #' @description
 #' Plots the results of a generalized PCA
 #'
-#' @param object generalized PCA object
+#' @param x generalized PCA object
 #' @param type the type of plot \code{type = "trace"} plots the algorithms progress by
 #' iteration, \code{type = "loadings"} plots the first 2 principal component
 #' loadings, \code{type = "scores"} plots the loadings first 2 principal component scores
@@ -439,29 +443,33 @@ fitted.gpca <- function(object, type = c("link", "response"), ...) {
 #' plot(gpca)
 #' }
 #' @export
-plot.gpca <- function(object, type = c("trace", "loadings", "scores"), ...) {
+plot.gpca <- function(x, type = c("trace", "loadings", "scores"), ...) {
   type = match.arg(type)
 
   if (type == "trace") {
-    df = data.frame(Iteration = 0:object$iters,
-                    NegativeLogLikelihood = object$loss_trace)
-    p <- ggplot2::ggplot(df, ggplot2::aes(Iteration, NegativeLogLikelihood)) +
+    df = data.frame(Iteration = 0:x$iters,
+                    NegativeLogLikelihood = x$loss_trace)
+    p <- ggplot2::ggplot(df, ggplot2::aes_string("Iteration", "NegativeLogLikelihood")) +
       ggplot2::geom_line()
   } else if (type == "loadings") {
-    df = data.frame(object$U)
+    df = data.frame(x$U)
     colnames(df) <- paste0("PC", 1:ncol(df))
     if (ncol(df) == 1) {
-      p <- ggplot2::qplot(PC1, 0, data = df, ylab = NULL)
+      df$PC2 = 0
+      p <- ggplot2::ggplot(df, ggplot2::aes_string("PC1", "PC2")) + ggplot2::geom_point() +
+        ggplot2::labs(y = NULL)
     } else {
-      p <- ggplot2::ggplot(df, ggplot2::aes(PC1, PC2)) + ggplot2::geom_point()
+      p <- ggplot2::ggplot(df, ggplot2::aes_string("PC1", "PC2")) + ggplot2::geom_point()
     }
   } else if (type == "scores") {
-    df = data.frame(object$PCs)
+    df = data.frame(x$PCs)
     colnames(df) <- paste0("PC", 1:ncol(df))
     if (ncol(df) == 1) {
-      p <- ggplot2::qplot(PC1, 0, data = df, ylab = NULL)
+      df$PC2 = 0
+      p <- ggplot2::ggplot(df, ggplot2::aes_string("PC1", "PC2")) + ggplot2::geom_point() +
+        ggplot2::labs(y = NULL)
     } else {
-      p <- ggplot2::ggplot(df, ggplot2::aes(PC1, PC2)) + ggplot2::geom_point()
+      p <- ggplot2::ggplot(df, ggplot2::aes_string("PC1", "PC2")) + ggplot2::geom_point()
     }
   }
 
@@ -570,7 +578,7 @@ cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "bino
 #' @description
 #' Plot cross validation results generalized PCA
 #'
-#' @param object a \code{cv.gpca} object
+#' @param x a \code{cv.gpca} object
 #' @param ... Additional arguments
 #' @examples
 #' # construct a low rank matrix in the natural parameter space
@@ -587,21 +595,21 @@ cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "bino
 #' plot(loglikes)
 #' }
 #' @export
-plot.cv.gpca <- function(object, ...) {
-  # replaces reshape2::melt(-object, value.name = "NegLogLikelihood")
-  Ms = type.convert(colnames(object))
-  ks = type.convert(rownames(object))
+plot.cv.gpca <- function(x, ...) {
+  # replaces reshape2::melt(-x, value.name = "NegLogLikelihood")
+  Ms = type.convert(colnames(x))
+  ks = type.convert(rownames(x))
   df = data.frame(k = rep(ks, times = length(Ms)),
-                  M = rep(Ms, each = length(ks)),
-                  NegLogLikelihood = as.vector(-object))
+                  m = rep(Ms, each = length(ks)),
+                  NegLogLikelihood = as.vector(-x))
 
-  if (ncol(object) == 1) {
+  if (ncol(x) == 1) {
     df$M = factor(df$M)
-    p <- ggplot2::ggplot(df, ggplot2::aes(k, NegLogLikelihood, colour = M)) +
+    p <- ggplot2::ggplot(df, ggplot2::aes_string("k", "NegLogLikelihood", colour = "m")) +
       ggplot2::geom_line()
   } else {
     df$k = factor(df$k)
-    p <- ggplot2::ggplot(df, ggplot2::aes(M, NegLogLikelihood, colour = k)) +
+    p <- ggplot2::ggplot(df, ggplot2::aes_string("m", "NegLogLikelihood", colour = "k")) +
       ggplot2::geom_line()
   }
   return(p)
