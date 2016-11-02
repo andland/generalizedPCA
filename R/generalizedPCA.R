@@ -243,15 +243,15 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     Z = as.matrix(theta + weights * (x - first_dir) / outer(W, rep(1, d)))
     Z[is.na(x)] <- theta[is.na(x)]
     if (main_effects) {
-      mu = as.numeric(colSums(diag(W) %*% (Z - eta %*% tcrossprod(U))) / sum(W))
+      mu = as.numeric(colSums((Z - eta %*% tcrossprod(U)) * W) / sum(W))
     }
 
     eta = saturated_natural_parameters(x, family, M = M) + missing_mat * outer(ones, mu)
     eta_centered = scale(eta, center = mu, scale = FALSE)
 
-    mat_temp = t(eta_centered) %*% diag(W) %*% scale(Z, center = mu, scale = FALSE)
+    mat_temp = t(eta_centered * W) %*% scale(Z, center = mu, scale = FALSE)
     mat_temp = mat_temp + t(mat_temp) -
-      t(eta_centered) %*% diag(W) %*% eta_centered
+      t(eta_centered * W) %*% eta_centered
 
     # irlba sometimes gives poor estimates of e-vectors
     # so I switch to standard eigen if it does
