@@ -35,8 +35,8 @@
 #' \item{PCs}{the princial component scores}
 #' \item{M}{the parameter inputed}
 #' \item{iters}{number of iterations required for convergence}
-#' \item{loss_trace}{the trace of the average negative log likelihood using the Fantope matrix}
-#' \item{proj_loss_trace}{the trace of the average negative log likelihood using the projection matrix}
+#' \item{loss_trace}{the trace of the average deviance using the Fantope matrix}
+#' \item{proj_loss_trace}{the trace of the average deviance using the projection matrix}
 #' \item{prop_deviance_expl}{the proportion of deviance explained by this model.
 #'    If \code{main_effects = TRUE}, the null model is just the main effects, otherwise
 #'    the null model estimates 0 for all natural parameters.}
@@ -54,6 +54,7 @@
 #' # run convex generalized PCA on it
 #' cgpca = convexGeneralizedPCA(mat, k = 1, M = 4, family = "binomial")
 #' @export
+#' @importFrom stats var
 convexGeneralizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "poisson", "multinomial"),
                                  weights, quiet = TRUE, use_irlba = FALSE, max_iters = 1000,
                                  conv_criteria = 1e-6, random_start = FALSE, start_H, mu,
@@ -93,7 +94,7 @@ convexGeneralizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomi
       } else {
         weighted_col_means = colSums(x * weights, na.rm = TRUE) / colSums(weights)
       }
-      if (any(apply(x, 2, var, na.rm = TRUE) == 0)) {
+      if (any(apply(x, 2, stats::var, na.rm = TRUE) == 0)) {
         stop("At least one variable has variance of 0")
       }
       if (family == "multinomial") {
@@ -155,7 +156,7 @@ convexGeneralizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomi
   etatX = t(eta_centered) %*% (weights * x_zeros)
 
   loglike = exp_fam_log_like(x, theta, family, weights)
-  min_loss = (sat_loglike - loglike) / sum_weights
+  min_loss = 2 * (sat_loglike - loglike) / sum_weights
   best_HU = HU
   best_loglike = loglike
   if (!quiet) {
@@ -186,21 +187,21 @@ convexGeneralizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomi
 
     theta = mu_mat + eta_centered %*% H
     loglike = exp_fam_log_like(x, theta, family, weights)
-    loss_trace[m + 1] = (sat_loglike - loglike) / sum_weights
+    loss_trace[m + 1] = 2 * (sat_loglike - loglike) / sum_weights
 
     proj_theta = mu_mat + eta_centered %*% tcrossprod(HU$U)
     proj_loglike = exp_fam_log_like(x, proj_theta, family, weights)
-    proj_loss_trace[m + 1] = (sat_loglike - proj_loglike) / sum_weights
+    proj_loss_trace[m + 1] = 2 * (sat_loglike - proj_loglike) / sum_weights
 
     if (!quiet) {
-      cat(m,"  ",loss_trace[m + 1],"  ",proj_loss_trace[m+1],"\n")
+      cat(m, "  ", loss_trace[m + 1], "  ", proj_loss_trace[m + 1], "\n")
     }
-    if (loss_trace[m+1] < min_loss) {
+    if (loss_trace[m + 1] < min_loss) {
       min_loss = loss_trace[m + 1]
       best_HU = HU
       best_loglike = loglike
     }
-    if (abs(loss_trace[m+1]-loss_trace[m]) < conv_criteria | min_loss == 0) {
+    if (abs(loss_trace[m+1]-loss_trace[m]) < 2 * conv_criteria | min_loss == 0) {
       break
     }
   }
@@ -352,8 +353,8 @@ plot.cgpca <- function(x, type = c("trace", "loadings", "scores"), ...) {
 
   if (type == "trace") {
     df = data.frame(Iteration = 0:x$iters,
-                    NegativeLogLikelihood = x$loss_trace)
-    p <- ggplot2::ggplot(df, ggplot2::aes_string("Iteration", "NegativeLogLikelihood")) +
+                    Deviance = x$loss_trace)
+    p <- ggplot2::ggplot(df, ggplot2::aes_string("Iteration", "Deviance")) +
       ggplot2::geom_line()
   } else if (type == "loadings") {
     df = data.frame(x$U)

@@ -35,7 +35,7 @@
 #' \item{M}{the parameter inputed}
 #' \item{family}{the exponential family used}
 #' \item{iters}{number of iterations required for convergence}
-#' \item{loss_trace}{the trace of the average negative log likelihood of the algorithm.
+#' \item{loss_trace}{the trace of the average deviance of the algorithm.
 #'    Should be non-increasing}
 #' \item{prop_deviance_expl}{the proportion of deviance explained by this model.
 #'    If \code{main_effects = TRUE}, the null model is just the main effects, otherwise
@@ -53,6 +53,7 @@
 #' # run Poisson PCA on it
 #' gpca = generalizedPCA(mat, k = 1, M = 4, family = "poisson")
 #' @export
+#' @importFrom stats var
 generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "poisson", "multinomial"),
                            weights, quiet = TRUE, majorizer = c("row", "all"),
                            use_irlba = FALSE, max_iters = 1000, conv_criteria = 1e-5,
@@ -101,7 +102,7 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
   }
 
   if (normalize) {
-    if (any(apply(x, 2, var, na.rm = TRUE) == 0)) {
+    if (any(apply(x, 2, stats::var, na.rm = TRUE) == 0)) {
       stop("At least one variable has variance of 0. Cannot normalize")
     }
 
@@ -191,7 +192,7 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
   loss_trace = numeric(max_iters + 1)
   theta = outer(ones, mu) + eta_centered %*% tcrossprod(U)
   loglike <- exp_fam_log_like(x, theta, family, weights)
-  loss_trace[1] = (sat_loglike - loglike) / sum_weights
+  loss_trace[1] = 2 * (sat_loglike - loglike) / sum_weights
   ptm <- proc.time()
 
   if (!quiet) {
@@ -276,7 +277,7 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
       }
     }
 
-    loss_trace[m + 1] = (sat_loglike - loglike) / sum_weights
+    loss_trace[m + 1] = 2 * (sat_loglike - loglike) / sum_weights
 
     if (!quiet) {
       time_elapsed = as.numeric(proc.time() - ptm)[3]
@@ -286,7 +287,7 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
       cat(round(time_elapsed / 3600, 1), "hours elapsed. Max", round(time_remain / 3600, 1), "hours remain.\n")
     }
     if (m > 4) {
-      if (abs(loss_trace[m] - loss_trace[m+1]) < conv_criteria) {
+      if (abs(loss_trace[m] - loss_trace[m+1]) < 2 * conv_criteria) {
         break
       }
     }
@@ -448,8 +449,8 @@ plot.gpca <- function(x, type = c("trace", "loadings", "scores"), ...) {
 
   if (type == "trace") {
     df = data.frame(Iteration = 0:x$iters,
-                    NegativeLogLikelihood = x$loss_trace)
-    p <- ggplot2::ggplot(df, ggplot2::aes_string("Iteration", "NegativeLogLikelihood")) +
+                    Deviance = x$loss_trace)
+    p <- ggplot2::ggplot(df, ggplot2::aes_string("Iteration", "Deviance")) +
       ggplot2::geom_line()
   } else if (type == "loadings") {
     df = data.frame(x$U)
@@ -595,10 +596,11 @@ cv.gpca <- function(x, ks, Ms = seq(2, 10, by = 2), family = c("gaussian", "bino
 #' plot(loglikes)
 #' }
 #' @export
+#' @importFrom utils type.convert
 plot.cv.gpca <- function(x, ...) {
   # replaces reshape2::melt(-x, value.name = "NegLogLikelihood")
-  Ms = type.convert(colnames(x))
-  ks = type.convert(rownames(x))
+  Ms = utils::type.convert(colnames(x))
+  ks = utils::type.convert(rownames(x))
   df = data.frame(k = rep(ks, times = length(Ms)),
                   m = rep(Ms, each = length(ks)),
                   NegLogLikelihood = as.vector(-x))

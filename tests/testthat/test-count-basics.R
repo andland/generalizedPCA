@@ -10,6 +10,7 @@ mat_np = outer(rnorm(rows), rnorm(cols))
 mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
 
 gpca = generalizedPCA(mat, k = k, M = 4, family = "poisson", main_effects = TRUE)
+gmf = generalizedMF(mat, k = k, family = "poisson", method = "als")
 
 pred1 = predict(gpca, mat)
 pred1l = predict(gpca, mat, type = "link")

@@ -55,8 +55,8 @@ following components:
 \item{PCs}{the princial component scores}
 \item{M}{the parameter inputed}
 \item{iters}{number of iterations required for convergence}
-\item{loss_trace}{the trace of the average negative log likelihood using the Fantope matrix}
-\item{proj_loss_trace}{the trace of the average negative log likelihood using the projection matrix}
+\item{loss_trace}{the trace of the average deviance using the Fantope matrix}
+\item{proj_loss_trace}{the trace of the average deviance using the projection matrix}
 \item{prop_deviance_expl}{the proportion of deviance explained by this model.
    If \code{main_effects = TRUE}, the null model is just the main effects, otherwise
    the null model estimates 0 for all natural parameters.}

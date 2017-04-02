@@ -27,17 +27,11 @@ inv.logit.mat <- function(x, min = 0, max = 1) {
 #'  same dimensions as x
 #' @param q instead of x, you can input matrix q which is
 #'  -1 if \code{x = 0}, 1 if \code{x = 1}, and 0 if \code{is.na(x)}
-#' @export
+# @export
 log_like_Bernoulli <- function(x, theta, q) {
-#   if (!missing(x)) {
-#     q = 2 * as.matrix(x) - 1
-#     q[is.na(q)] <- 0
-#   }
-#   .Call(compute_loglik, q, theta)
   logisticPCA::log_like_Bernoulli(x, theta, q)
 }
 
-# @export
 check_family <- function(x, family) {
   distinct_vals = unique(c(x[!is.na(x)]))
   if (family %in% c("binomial", "multinomial") &&
@@ -64,7 +58,23 @@ check_family <- function(x, family) {
   }
 }
 
-# @export
+exp_fam_guess <- function(x) {
+  distinct_vals = unique(c(x[!is.na(x)]))
+  if (all(distinct_vals %in% c(0, 1))) {
+    family = "binomial"
+    message("Guessing data comes from a binomial distribution because it consists of all 0's and 1's")
+  } else if (all(distinct_vals >= 0 & distinct_vals %% 1 == 0)) {
+    family = "poisson"
+    message("Guessing data comes from a poisson distribution because it consists of all non-negative integers")
+  } else if (all(distinct_vals >=0 & distinct_vals <= 1) & all(rowSums(x, na.rm = TRUE) <= 1)) {
+    family = "multinomial"
+    message("Guessing data comes from a multinomial distribution because all the rows sum to less than 1")
+  } else {
+    family = "gaussian"
+  }
+  return(family)
+}
+
 saturated_natural_parameters <- function(x, family, M) {
   if (family == "gaussian") {
     eta = x
@@ -118,7 +128,6 @@ exp_fam_mean <- function(theta, family) {
   return(mean_mat)
 }
 
-# @export
 exp_fam_variance <- function(theta, family, weights = 1.0) {
   if (family == "gaussian") {
     var_mat = matrix(1, nrow(theta), ncol(theta)) * weights
@@ -136,19 +145,38 @@ exp_fam_log_like <- function(x, theta, family, weights = 1.0) {
   if (family == "gaussian") {
     return(-0.5 * sum(weights * (x - theta)^2, na.rm = TRUE))
   } else if (family == "binomial") {
-    return(sum(weights * (x * theta - log(1 + exp(theta))), na.rm = TRUE))
+    return(sum((weights * log(inv.logit.mat((2 * x - 1) * theta))), na.rm = TRUE))
+    # the below does not work with x == 1 and theta > 750
+    # return(sum(weights * (x * theta - log(1 + exp(theta))), na.rm = TRUE))
   } else if (family == "poisson") {
     return(sum(weights * (x * theta - exp(theta) - lfactorial(x)), na.rm = TRUE))
   } else if (family == "multinomial") {
-    if (length(weights) > 1 && any(apply(weights, 1, var) > 0)) {
-        stop("weights should be the same for every variable withing each row")
+    if (length(weights) > 1 && any(apply(weights, 1, stats::var) > 0)) {
+      stop("weights should be the same for every variable withing each row")
     }
     return(sum(weights * (x * theta) - weights / ncol(x) *
-              outer(log(1 + rowSums(exp(theta))), rep(1, ncol(x))), na.rm = TRUE))
+                 outer(log(1 + rowSums(exp(theta))), rep(1, ncol(x))), na.rm = TRUE))
   }
 }
 
-# @export
+#' Calculate exponential family deviance
+#'
+#' Calculates the deviance of data assuming it comes from an exponential family
+#'
+#' @param x a vector or matrix of data
+#' @param theta natural parameters. Must be same dimensions as \code{x}
+#' @param family exponential family distribution of data
+#' @param weights weights of datapoints. Must be a scalar or the same dimensions as the data
+#'
+#' @export
+exp_fam_deviance <- function(x, theta, family, weights = 1.0) {
+  eta_sat_nat = saturated_natural_parameters(x, family, M = Inf)
+  sat_loglike = exp_fam_log_like(x, eta_sat_nat, family, weights)
+
+  -2 * (exp_fam_log_like(x, theta, family, weights) - sat_loglike)
+}
+
+# for solving for m
 exp_fam_sat_ind_mat <- function(x, family) {
   if (family == "gaussian") {
     return(matrix(0, nrow(x), ncol(x)))

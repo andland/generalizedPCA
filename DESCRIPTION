@@ -1,8 +1,8 @@
 Package: generalizedPCA
 Type: Package
 Title: Generalized PCA
-Version: 0.1
-Date: 2015-03-11
+Version: 0.2
+Date: 2017-04-02
 NeedsCompilation: yes
 ByteCompile: yes
 Author: Andrew J. Landgraf
@@ -13,7 +13,8 @@ LazyData: TRUE
 URL: https://github.com/andland/generalizedPCA
 Imports:
     ggplot2,
-    logisticPCA
+    logisticPCA,
+    RSpectra (>= 0.10-0)
 Suggests:
     irlba,
     testthat (>= 0.11.0)

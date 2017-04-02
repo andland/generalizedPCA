@@ -59,7 +59,7 @@ following components:
 \item{M}{the parameter inputed}
 \item{family}{the exponential family used}
 \item{iters}{number of iterations required for convergence}
-\item{loss_trace}{the trace of the average negative log likelihood of the algorithm.
+\item{loss_trace}{the trace of the average deviance of the algorithm.
    Should be non-increasing}
 \item{prop_deviance_expl}{the proportion of deviance explained by this model.
    If \code{main_effects = TRUE}, the null model is just the main effects, otherwise
