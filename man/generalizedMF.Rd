@@ -5,7 +5,7 @@
 \title{Exponential Family Matrix Factorization}
 \usage{
 generalizedMF(x, k = 2, family = c("gaussian", "binomial", "poisson"),
-  quiet = TRUE, max_iters = 1000, conv_criteria = 1e-05,
+  weights, quiet = TRUE, max_iters = 1000, conv_criteria = 1e-05,
   random_start = FALSE, start_A, start_B, mu, main_effects = TRUE,
   method = c("als", "svd"))
 }
@@ -15,6 +15,8 @@ generalizedMF(x, k = 2, family = c("gaussian", "binomial", "poisson"),
 \item{k}{dimension}
 
 \item{family}{exponential family distribution of data}
+
+\item{weights}{an optional matrix of the same size as the \code{x} with data weights}
 
 \item{quiet}{logical; whether the calculation should give feedback}
 

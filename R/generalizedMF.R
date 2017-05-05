@@ -5,6 +5,7 @@
 #' @param x matrix of either binary, proportions, count, or continuous data
 #' @param k dimension
 #' @param family exponential family distribution of data
+#' @param weights an optional matrix of the same size as the \code{x} with data weights
 #' @param quiet logical; whether the calculation should give feedback
 #' @param max_iters maximum number of iterations
 #' @param conv_criteria convergence criteria
@@ -56,7 +57,7 @@
 #' mod = generalizedMF(mat, k = 1, family = "poisson", quiet = FALSE)
 #'
 generalizedMF <- function(x, k = 2, family = c("gaussian", "binomial", "poisson"),
-                      quiet = TRUE, max_iters = 1000, conv_criteria = 1e-5,
+                      weights, quiet = TRUE, max_iters = 1000, conv_criteria = 1e-5,
                       random_start = FALSE, start_A,  start_B, mu, main_effects = TRUE,
                       method = c("als", "svd")) {
   family = match.arg(family)
@@ -75,20 +76,41 @@ generalizedMF <- function(x, k = 2, family = c("gaussian", "binomial", "poisson"
   d = ncol(x)
   ones = rep(1, n)
 
+  if (missing(weights)) {
+    weights = 1.0
+    sum_weights = sum(!is.na(x))
+  } else {
+    weights[is.na(x)] <- 0
+    if (any(is.na(weights))) {
+      stop("Can't have NA in weights")
+    }
+    if (any(weights < 0)) {
+      stop("weights must be non-negative")
+    }
+    if (!all(dim(weights) == dim(x))) {
+      stop("x and weights are not the same dimension")
+    }
+    sum_weights = sum(weights)
+  }
+
   # calculate the null log likelihood for % deviance explained and normalization
   if (main_effects) {
-    weighted_col_means = colMeans(x, na.rm = TRUE)
+    if (length(weights) == 1) {
+      weighted_col_means = colMeans(x, na.rm = TRUE)
+    } else {
+      weighted_col_means = colSums(x * weights, na.rm = TRUE) / colSums(weights)
+    }
     null_theta = as.numeric(saturated_natural_parameters(matrix(weighted_col_means, 1), family, M = Inf))
   } else {
     null_theta = rep(0, d)
   }
-  null_deviance = exp_fam_deviance(x, outer(ones, null_theta), family) / sum(!missing_mat)
+  null_deviance = exp_fam_deviance(x, outer(ones, null_theta), family, weights) / sum_weights
 
   # Initialize #
   ##################
   if (main_effects) {
     if (missing(mu)) {
-      mu = saturated_natural_parameters(colMeans(x, na.rm = TRUE), family, Inf)
+      mu = saturated_natural_parameters(weighted_col_means, family, Inf)
     } else {
       mu = as.numeric(mu)
       stopifnot(length(mu) == d)
@@ -121,7 +143,7 @@ generalizedMF <- function(x, k = 2, family = c("gaussian", "binomial", "poisson"
 
   loss_trace = numeric(max_iters)
   theta = outer(ones, mu) + tcrossprod(A, B)
-  loss_trace[1] = exp_fam_deviance(x, theta, family) / sum(!missing_mat)
+  loss_trace[1] = exp_fam_deviance(x, theta, family, weights) / sum_weights
 
   ptm <- proc.time()
 
@@ -135,10 +157,10 @@ generalizedMF <- function(x, k = 2, family = c("gaussian", "binomial", "poisson"
       # update A
       theta = outer(ones, mu) + tcrossprod(A, B)
       first_dir = exp_fam_mean(theta, family)
-      second_dir = exp_fam_variance(theta, family)
+      second_dir = exp_fam_variance(theta, family, weights)
 
       W = apply(second_dir, 2, max)
-      Z = as.matrix(theta + (x - first_dir) / outer(ones, W))
+      Z = as.matrix(theta + weights * (x - first_dir) / outer(ones, W))
       Z[is.na(x)] <- theta[is.na(x)]
 
       A = t(solve(t(B) %*% diag(W) %*% B + diag(L2_eps, k, k),
@@ -147,10 +169,10 @@ generalizedMF <- function(x, k = 2, family = c("gaussian", "binomial", "poisson"
       # update B
       theta = outer(ones, mu) + tcrossprod(A, B)
       first_dir = exp_fam_mean(theta, family)
-      second_dir = exp_fam_variance(theta, family)
+      second_dir = exp_fam_variance(theta, family, weights)
 
       W = apply(second_dir, 1, max)
-      Z = as.matrix(theta + (x - first_dir) / outer(W, rep(1, d)))
+      Z = as.matrix(theta + weights * (x - first_dir) / outer(W, rep(1, d)))
       Z[is.na(x)] <- theta[is.na(x)]
 
       B = t(solve(t(A) %*% diag(W, n, n) %*% A + diag(L2_eps, k, k),
@@ -158,10 +180,10 @@ generalizedMF <- function(x, k = 2, family = c("gaussian", "binomial", "poisson"
     } else if (method == "svd") {
       theta = outer(ones, mu) + tcrossprod(A, B)
       first_dir = exp_fam_mean(theta, family)
-      second_dir = exp_fam_variance(theta, family)
+      second_dir = exp_fam_variance(theta, family, weights)
 
       W = max(second_dir)
-      Z = as.matrix(theta + (x - first_dir) / W)
+      Z = as.matrix(theta + weights * (x - first_dir) / W)
       Z[is.na(x)] <- theta[is.na(x)]
 
       udv = svd(scale(Z, center = mu, scale = FALSE))
@@ -171,7 +193,7 @@ generalizedMF <- function(x, k = 2, family = c("gaussian", "binomial", "poisson"
 
     # Calc Deviance
     theta = outer(ones, mu) + tcrossprod(A, B)
-    loss_trace[ii] <- exp_fam_deviance(x, theta, family) / sum(!missing_mat)
+    loss_trace[ii] <- exp_fam_deviance(x, theta, family, weights) / sum_weights
 
     if (!quiet) {
       time_elapsed = as.numeric(proc.time() - ptm)[3]
@@ -248,11 +270,11 @@ predict.gmf <- function(object, newdata, type = c("PCs", "link", "response"), qu
     k = ncol(object$B)
     stopifnot(d == nrow(object$B))
     check_family(newdata, object$family)
+    L2_eps = 1e-5
 
     ones = rep(1, n)
 
     # solve for A
-    last_deviance = Inf
     if (missing(start_A)) {
       theta = outer(ones, object$mu)
     } else {
@@ -260,17 +282,32 @@ predict.gmf <- function(object, newdata, type = c("PCs", "link", "response"), qu
       theta = outer(ones, object$mu) + tcrossprod(start_A, object$B)
     }
 
+    last_deviance = exp_fam_deviance(newdata, theta, object$family) / sum(!is.na(newdata))
+    if (!quiet) {
+      cat(0, " ", last_deviance, "\n")
+    }
     for (ii in seq_len(max_iters)) {
       first_dir = exp_fam_mean(theta, object$family)
       second_dir = exp_fam_variance(theta, object$family)
 
-      W = apply(second_dir, 2, max)
-      Z = as.matrix(theta + (newdata - first_dir) / outer(ones, W)) - outer(ones, object$mu)
+      multiplier = 1
+      # while (TRUE) {
+        # W = apply(second_dir, 2, max)
+      W = rep(max(second_dir), d)
+      Z = as.matrix(theta + (newdata - first_dir) / outer(ones, W))
+      Z[is.na(newdata)] <- theta[is.na(newdata)]
 
-      A = t(solve(t(object$B) %*% diag(W, d, d) %*% object$B, t(object$B) %*% diag(W, d, d) %*% t(Z)))
+      A = t(solve(t(object$B) %*% diag(W, d, d) %*% object$B + diag(L2_eps, k, k),
+                  t(object$B) %*% diag(W, d, d) %*% t(scale(Z, object$mu, FALSE))))
 
       theta = outer(ones, object$mu) + tcrossprod(A, object$B)
       this_deviance = exp_fam_deviance(newdata, theta, object$family) / sum(!is.na(newdata))
+
+        # if (this_deviance < last_deviance) {
+        #   break
+        # } else {
+        #   multiplier = multiplier * 2
+        # }
 
       if (!quiet) {
         cat(ii ," ", this_deviance, "\n")
