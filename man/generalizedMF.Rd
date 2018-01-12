@@ -40,14 +40,12 @@ It has the benefit of majozing row-wise and column-wise for each of the updates.
 a more gereral majorization, which may not work well for heterogeneous matrices.}
 }
 \value{
-An S3 object of class \code{gsmf} which is a list with the
+An S3 object of class \code{gmf} which is a list with the
 following components:
 \item{mu}{the main effects for dimensionality reduction}
 \item{A}{the \code{n}x\code{k}-dimentional matrix with the scores}
 \item{B}{the \code{d}x\code{k}-dimentional matrix with the loadings}
-\item{beta}{the \code{k + 1} length vector of the coefficients}
-\item{family_x}{the exponential family of covariates}
-\item{family_y}{the exponential family of response}
+\item{family}{the exponential family of the data}
 \item{iters}{number of iterations required for convergence}
 \item{loss_trace}{the trace of the average deviance of the algorithm.
    Should be non-increasing}
