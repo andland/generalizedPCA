@@ -193,3 +193,24 @@ exp_fam_sat_ind_mat <- function(x, family) {
     q = q + (x == 1) - (x == 0)
   }
 }
+
+# for exponential family harmoniums
+exp_fam_sufficient_stat <- function(x, family) {
+  if (family %in% c("gaussian", "binomial", "poisson")) {
+    return(x)
+  }
+}
+
+# for exponential family harmoniums
+exp_fam_sample <- function(theta, family) {
+  mean_mat = exp_fam_mean(theta = theta, family = family)
+
+  if (family == "gaussian") {
+    return(matrix(rnorm(prod(dim(theta)), mean = c(mean_mat), sd = 1), nrow(theta), ncol(theta)))
+  } else if (family == "binomial") {
+    # set 1's to 1, 0's to -1, and everything else to 0
+    return(matrix(rbinom(prod(dim(theta)), size = 1, prob = c(mean_mat)), nrow(theta), ncol(theta)))
+  } else if (family == "poisson") {
+    return(matrix(rpois(prod(dim(theta)), lambda = c(mean_mat)), nrow(theta), ncol(theta)))
+  }
+}
