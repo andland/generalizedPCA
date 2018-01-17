@@ -46,18 +46,20 @@
 #'
 #' # generate a count matrix and binary response
 #' mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
+#' mat[1, 1] <- NA
 #'
-#' mod = exponential_family_harmonium(mat, k = 1, family = "poisson", quiet = FALSE, learning_rate = 0.001)
+#' modp = exponential_family_harmonium(mat, k = 2, family = "poisson", quiet = FALSE, learning_rate = 0.001, rms_prop = F, max_iters = 250)
+#' gmf = generalizedMF(mat, k = 1, family = "poisson", quiet = FALSE)
 #'
 exponential_family_harmonium <- function(x, k = 2,
                           family = c("gaussian", "binomial", "poisson"),
                           family_hidden = c("gaussian", "binomial", "poisson"),
-                          cd_iters = c(1, 5), learning_rate = 0.001, max_iters = 100,
-                          quiet = TRUE,
-                          random_start = TRUE, start_W,  mu, main_effects = TRUE) {
+                          cd_iters = 1, learning_rate = 0.001, max_iters = 100, rms_prop = FALSE,
+                          quiet = TRUE, random_start = TRUE, start_W,  mu, main_effects = TRUE) {
   family = match.arg(family)
   family_hidden = match.arg(family_hidden)
   check_family(x, family)
+  # x = mat; k = 1; family = "poisson"; family_hidden = "gaussian"; cd_iters = 1; learning_rate = 0.001; max_iters = 100; quiet = FALSE;
 
   stopifnot(cd_iters > 0.5, length(cd_iters) %in% c(1, 2, max_iters))
   if (length(cd_iters) == 1) {
@@ -72,6 +74,13 @@ exponential_family_harmonium <- function(x, k = 2,
   x = as.matrix(x)
   missing_mat = is.na(x)
   sum_weights = sum(!missing_mat)
+
+  # missing values are ignored, which is equivalent to setting them to 0
+  x_imputed = x
+  x_imputed[missing_mat] <- 0
+  # scaled to take the avg with different number of missing values
+  x_imputed_scaled = scale(x_imputed, FALSE, colSums(!missing_mat))
+
   n = nrow(x)
   d = ncol(x)
   ones = rep(1, n)
@@ -107,12 +116,12 @@ exponential_family_harmonium <- function(x, k = 2,
   } else if (random_start) {
     W = matrix(rnorm(d * k, 0, 0.1), d, k)
   } else {
-    udv = svd(scale(saturated_natural_parameters(x, family, 4), TRUE, FALSE))
+    udv = svd(scale(saturated_natural_parameters(x_imputed, family, 4), TRUE, FALSE))
     W = udv$v[, 1:k, drop = FALSE]
   }
 
-  loss_trace = numeric(max_iters)
-  theta = outer(ones, mu) + exp_fam_mean(outer(ones, hidden_bias) + x %*% W, family_hidden) %*% t(W)
+  loss_trace = numeric(max_iters + 1)
+  theta = outer(ones, mu) + exp_fam_mean(outer(ones, hidden_bias) + x_imputed %*% W, family_hidden) %*% t(W)
   loss_trace[1] = exp_fam_deviance(x, theta, family) / sum_weights
 
   ptm <- proc.time()
@@ -122,28 +131,62 @@ exponential_family_harmonium <- function(x, k = 2,
     cat("0 hours elapsed\n")
   }
 
+  # RMSProp
+  if (rms_prop) {
+    W_grad_sq = matrix(1, nrow(W), ncol(W))
+  } else {
+    W_grad_sq = matrix(1, nrow(W), ncol(W))
+  }
+
   for (ii in seq_len(max_iters)) {
 
-    hidden_mean_0 = exp_fam_mean(outer(ones, hidden_bias) + x %*% W, family_hidden)
-    visible_hidden_0 = t(x) %*% hidden_mean_0
+    while (TRUE) {
+      hidden_mean_0 = exp_fam_mean(outer(ones, hidden_bias) + x_imputed %*% W, family_hidden)
+      visible_hidden_0 = t(x_imputed_scaled) %*% hidden_mean_0
 
-    visible_cd = contrastive_divergence(x = x, W = W, mu = mu, hidden_bias = hidden_bias,
-                                        family = family, family_hidden = family_hidden,
-                                        num_iter = cd_iters[ii])
-    hidden_mean_cd = exp_fam_mean(outer(ones, hidden_bias) + visible_cd %*% W, family_hidden)
-    visible_hidden_cd = t(visible_cd) %*% hidden_mean_cd
+      visible_cd = contrastive_divergence(x = x_imputed, W = W, mu = mu, hidden_bias = hidden_bias,
+                                          family = family, family_hidden = family_hidden,
+                                          num_iter = cd_iters[ii])
+      hidden_mean_cd = exp_fam_mean(outer(ones, hidden_bias) + visible_cd %*% W, family_hidden)
+      visible_hidden_cd = t(visible_cd) %*% hidden_mean_cd / n
 
-    W = W + learning_rate * (visible_hidden_0 - visible_hidden_cd) / n
+      # the generated data can explode with gaussian hidden and poisson visible
+      if (any(is.na(visible_hidden_cd))) {
+        if (ii > 1) {
+          W_grad_sq = W_grad_sq * 4
+          W = W_lag + learning_rate * W_grad / sqrt(W_grad_sq)
+        } else {
+          W = W / 2
+        }
+        next
+      }
 
-    # Calc Deviance
-    theta = outer(ones, mu) + exp_fam_mean(outer(ones, hidden_bias) + x %*% W, family_hidden) %*% t(W)
-    loss_trace[ii] <- exp_fam_deviance(x, theta, family) / sum_weights
+      W_grad = visible_hidden_0 - visible_hidden_cd
+      W = W + learning_rate * W_grad / sqrt(W_grad_sq)
+      if (rms_prop) {
+        if (ii == 1) {
+          W_grad_sq = W_grad^2
+        } else {
+          W_grad_sq = 0.1 * W_grad^2 + 0.9 * W_grad_sq
+        }
+      }
+
+      # Calc Deviance
+      theta = outer(ones, mu) + exp_fam_mean(outer(ones, hidden_bias) + x_imputed %*% W, family_hidden) %*% t(W)
+      loss_trace[ii + 1] <- exp_fam_deviance(x, theta, family) / sum_weights
+
+      if (loss_trace[ii + 1] <= loss_trace[1]) {
+        break
+      } else {
+        W_grad_sq = W_grad_sq * 4
+      }
+    }
 
     if (!quiet) {
       time_elapsed = as.numeric(proc.time() - ptm)[3]
       tot_time = max_iters / ii * time_elapsed
       time_remain = tot_time - time_elapsed
-      cat(ii, "  ", loss_trace[ii], "")
+      cat(ii, "  ", loss_trace[ii + 1], "")
       cat(round(time_elapsed / 3600, 1), "hours elapsed. Max", round(time_remain / 3600, 1), "hours remain.\n")
     }
 
@@ -162,8 +205,9 @@ exponential_family_harmonium <- function(x, k = 2,
     family_hidden = family_hidden,
     iters = ii,
     cd_iters = cd_iters[1:ii],
-    loss_trace = loss_trace[1:ii],
-    prop_deviance_expl = 1 - loss_trace[ii] / null_deviance
+    loss_trace = loss_trace[2:(ii + 1)],
+    prop_deviance_expl = 1 - loss_trace[ii + 1] / null_deviance,
+    W_grad_sq = W_grad_sq
   )
   class(object) <- "efh"
   object
@@ -178,3 +222,15 @@ contrastive_divergence <- function(x, W, mu, hidden_bias, family, family_hidden,
   }
   return(visible)
 }
+
+simulate_efh <- function(model, x, num_iter) {
+  visible = x
+  ones = rep(1, nrow(x))
+  for (cd_ii in seq_len(num_iter)) {
+    hidden = exp_fam_sample(outer(ones, model$hidden_bias) + visible %*% model$W, model$family_hidden)
+    visible = exp_fam_sample(outer(ones, model$mu) + hidden %*% t(model$W), model$family)
+  }
+  return(visible)
+}
+
+#' contrastive_divergence(mat, )

@@ -6,8 +6,9 @@
 \usage{
 exponential_family_harmonium(x, k = 2, family = c("gaussian", "binomial",
   "poisson"), family_hidden = c("gaussian", "binomial", "poisson"),
-  cd_iters = c(1, 5), learning_rate = 0.001, max_iters = 100,
-  quiet = TRUE, random_start = TRUE, start_W, mu, main_effects = TRUE)
+  cd_iters = 1, learning_rate = 0.001, max_iters = 100,
+  rms_prop = FALSE, quiet = TRUE, random_start = TRUE, start_W, mu,
+  main_effects = TRUE)
 }
 \arguments{
 \item{x}{matrix of either binary, count, or continuous data}
@@ -62,8 +63,10 @@ mat_np = outer(rnorm(rows), rnorm(cols))
 
 # generate a count matrix and binary response
 mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
+mat[1, 1] <- NA
 
-mod = exponential_family_harmonium(mat, k = 1, family = "poisson", quiet = FALSE, learning_rate = 0.001)
+modp = exponential_family_harmonium(mat, k = 2, family = "poisson", quiet = FALSE, learning_rate = 0.001, rms_prop = F, max_iters = 250)
+gmf = generalizedMF(mat, k = 1, family = "poisson", quiet = FALSE)
 
 }
 \references{

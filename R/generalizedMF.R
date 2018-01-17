@@ -140,6 +140,7 @@ generalizedMF <- function(x, k = 2, family = c("gaussian", "binomial", "poisson"
 
   loss_trace = numeric(max_iters)
   theta = outer(ones, mu) + tcrossprod(A, B)
+  # not really the first iteration
   loss_trace[1] = exp_fam_deviance(x, theta, family, weights) / sum_weights
 
   ptm <- proc.time()
