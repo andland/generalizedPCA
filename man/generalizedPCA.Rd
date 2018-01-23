@@ -6,7 +6,7 @@
 \usage{
 generalizedPCA(x, k = 2, M = 4, family = c("gaussian", "binomial",
   "poisson", "multinomial"), weights, quiet = TRUE, majorizer = c("row",
-  "all"), use_irlba = FALSE, max_iters = 1000, conv_criteria = 1e-05,
+  "all"), partial_decomp = FALSE, max_iters = 1000, conv_criteria = 1e-05,
   random_start = FALSE, start_U, start_mu, main_effects = TRUE,
   normalize = FALSE, validation, val_weights)
 }
@@ -27,8 +27,9 @@ generalizedPCA(x, k = 2, M = 4, family = c("gaussian", "binomial",
 tighter majorization, but may take longer to calculate each iteration.
 \code{"all"} may be faster per iteration, but take more iterations}
 
-\item{use_irlba}{logical; if \code{TRUE}, the function uses the irlba package
-to more quickly calculate the eigen-decomposition}
+\item{partial_decomp}{logical; if \code{TRUE}, the function uses the RSpectra package
+to more quickly calculate the SVD. When the number of columns is small,
+the approximation may be less accurate and slower}
 
 \item{max_iters}{number of maximum iterations}
 

@@ -6,8 +6,8 @@
 \usage{
 generalizedMF(x, k = 2, family = c("gaussian", "binomial", "poisson"),
   weights, quiet = TRUE, max_iters = 1000, conv_criteria = 1e-05,
-  random_start = FALSE, start_A, start_B, mu, main_effects = TRUE,
-  method = c("als", "svd"))
+  partial_decomp = FALSE, random_start = FALSE, start_A, start_B, mu,
+  main_effects = TRUE, method = c("als", "svd"))
 }
 \arguments{
 \item{x}{matrix of either binary, proportions, count, or continuous data}
@@ -23,6 +23,10 @@ generalizedMF(x, k = 2, family = c("gaussian", "binomial", "poisson"),
 \item{max_iters}{maximum number of iterations}
 
 \item{conv_criteria}{convergence criteria}
+
+\item{partial_decomp}{logical; if \code{TRUE}, the function uses the RSpectra package
+to more quickly calculate the SVD. When the number of columns is small,
+the approximation may be less accurate and slower}
 
 \item{random_start}{whether to randomly initialize \code{A} and \code{B}}
 

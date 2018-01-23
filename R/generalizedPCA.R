@@ -13,8 +13,9 @@
 #' @param majorizer how to majorize the deviance. \code{"row"} gives
 #'  tighter majorization, but may take longer to calculate each iteration.
 #'  \code{"all"} may be faster per iteration, but take more iterations
-#' @param use_irlba logical; if \code{TRUE}, the function uses the irlba package
-#'   to more quickly calculate the eigen-decomposition
+#' @param partial_decomp logical; if \code{TRUE}, the function uses the RSpectra package
+#'   to more quickly calculate the SVD. When the number of columns is small,
+#'   the approximation may be less accurate and slower
 #' @param max_iters number of maximum iterations
 #' @param conv_criteria convergence criteria. The difference between average deviance
 #'   in successive iterations
@@ -56,11 +57,9 @@
 #' @importFrom stats var
 generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "poisson", "multinomial"),
                            weights, quiet = TRUE, majorizer = c("row", "all"),
-                           use_irlba = FALSE, max_iters = 1000, conv_criteria = 1e-5,
+                           partial_decomp = FALSE, max_iters = 1000, conv_criteria = 1e-5,
                            random_start = FALSE, start_U, start_mu, main_effects = TRUE,
                            normalize = FALSE, validation, val_weights) {
-  use_irlba = use_irlba && requireNamespace("irlba", quietly = TRUE)
-
   family = match.arg(family)
   check_family(x, family)
 
@@ -178,8 +177,8 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     U = matrix(rnorm(d * k), d, k)
     U = qr.Q(qr(U))
   } else {
-    if (use_irlba) {
-      udv = irlba::irlba(scale(eta, center = mu, scale = normalize), nu = k, nv = k)
+    if (partial_decomp) {
+      udv = RSpectra::svds(scale(eta, center = mu, scale = normalize), k, nu = k, nv = k)
     } else {
       udv = svd(scale(eta, center = mu, scale = normalize))
     }
@@ -254,26 +253,28 @@ generalizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "
     mat_temp = mat_temp + t(mat_temp) -
       t(eta_centered * W) %*% eta_centered
 
-    # irlba sometimes gives poor estimates of e-vectors
+    # RSpectra could give poor estimates of e-vectors
     # so I switch to standard eigen if it does
     repeat {
-      if (use_irlba) {
-        udv = irlba::irlba(mat_temp, nu=k, nv=k, adjust=3)
-        U = matrix(udv$u[, 1:k], d, k)
+      if (partial_decomp) {
+        eig = RSpectra::eigs_sym(mat_temp, k = min(k + 2, d))
       } else {
-        eig = eigen(mat_temp, symmetric=TRUE)
-        U = matrix(eig$vectors[, 1:k], d, k)
+        eig = eigen(mat_temp, symmetric = TRUE)
       }
+      U = matrix(eig$vectors[, 1:k], d, k)
 
       theta = outer(ones, mu) + eta_centered %*% tcrossprod(U)
       this_loglike <- exp_fam_log_like(x, theta, family, weights)
 
-      if (!use_irlba | this_loglike>=loglike) {
+      if (!partial_decomp | this_loglike>=loglike) {
         loglike = this_loglike
         break
       } else {
-        use_irlba = FALSE
-        if (!quiet) {cat("Quitting irlba!\n")}
+        partial_decomp = FALSE
+        if (!quiet) {
+          cat("RSpectra::eigs_sym was too inaccurate in iteration ", m ,
+              ". Switched to base::eigen")
+        }
       }
     }
 

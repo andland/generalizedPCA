@@ -9,6 +9,9 @@
 #' @param quiet logical; whether the calculation should give feedback
 #' @param max_iters maximum number of iterations
 #' @param conv_criteria convergence criteria
+#' @param partial_decomp logical; if \code{TRUE}, the function uses the RSpectra package
+#'   to more quickly calculate the SVD. When the number of columns is small,
+#'   the approximation may be less accurate and slower
 #' @param random_start whether to randomly initialize \code{A} and \code{B}
 #' @param start_A initial value for \code{A}
 #' @param start_B initial value for \code{B}
@@ -55,7 +58,8 @@
 #'
 generalizedMF <- function(x, k = 2, family = c("gaussian", "binomial", "poisson"),
                       weights, quiet = TRUE, max_iters = 1000, conv_criteria = 1e-5,
-                      random_start = FALSE, start_A,  start_B, mu, main_effects = TRUE,
+                      partial_decomp = FALSE,
+                      random_start = FALSE, start_A, start_B, mu, main_effects = TRUE,
                       method = c("als", "svd")) {
   family = match.arg(family)
   check_family(x, family)
@@ -122,7 +126,12 @@ generalizedMF <- function(x, k = 2, family = c("gaussian", "binomial", "poisson"
   } else if (random_start) {
     B = matrix(rnorm(d * k), d, k)
   } else {
-    udv = svd(scale(saturated_natural_parameters(x, family, 4), TRUE, FALSE))
+    if (partial_decomp) {
+      udv = RSpectra::svds(scale(saturated_natural_parameters(x, family, 4), TRUE, FALSE), min(k + 1, d))
+    } else {
+      udv = svd(scale(saturated_natural_parameters(x, family, 4), TRUE, FALSE))
+    }
+
     B = udv$v[, 1:k, drop = FALSE]
   }
 
@@ -133,7 +142,11 @@ generalizedMF <- function(x, k = 2, family = c("gaussian", "binomial", "poisson"
     A = matrix(rnorm(n * k), n, k)
   } else {
     if (!missing(start_B)) {
-      udv = svd(scale(saturated_natural_parameters(x, family, 4), TRUE, FALSE))
+      if (partial_decomp) {
+        udv = RSpectra::svds(scale(saturated_natural_parameters(x, family, 4), TRUE, FALSE), min(k + 1, d))
+      } else {
+        udv = svd(scale(saturated_natural_parameters(x, family, 4), TRUE, FALSE))
+      }
     }
     A = udv$u[, 1:k, drop = FALSE] %*% diag(udv$d, k, k)
   }
@@ -184,7 +197,12 @@ generalizedMF <- function(x, k = 2, family = c("gaussian", "binomial", "poisson"
       Z = as.matrix(theta + weights * (x - first_dir) / W)
       Z[is.na(x)] <- theta[is.na(x)]
 
-      udv = svd(scale(Z, center = mu, scale = FALSE))
+      if (partial_decomp) {
+        udv = RSpectra::svds(scale(Z, center = mu, scale = FALSE), min(k + 1, d))
+      } else {
+        udv = svd(scale(Z, center = mu, scale = FALSE))
+      }
+
       A = udv$u[, 1:k, drop = FALSE] %*% diag(udv$d, k, k)
       B = udv$v[, 1:k, drop = FALSE]
     }

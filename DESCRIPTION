@@ -16,6 +16,5 @@ Imports:
     logisticPCA,
     RSpectra (>= 0.10-0)
 Suggests:
-    irlba,
     testthat (>= 0.11.0)
 RoxygenNote: 5.0.1
