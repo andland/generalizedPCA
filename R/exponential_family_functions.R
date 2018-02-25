@@ -202,6 +202,7 @@ exp_fam_sufficient_stat <- function(x, family) {
 }
 
 # for exponential family harmoniums
+#' @importFrom stats rbinom rpois rnorm
 exp_fam_sample <- function(theta, family) {
   mean_mat = exp_fam_mean(theta = theta, family = family)
 

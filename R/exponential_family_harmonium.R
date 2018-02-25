@@ -11,6 +11,7 @@
 #'   algorithm will perform from the beginning until the end, linearly interpolated
 #' @param max_iters maximum number of iterations
 #' @param learning_rate learning rate used for gradient descent
+#' @param rms_prop logical; whether to use RMS prop for optimization. Default is \code{FALSE}.
 #' @param quiet logical; whether the calculation should give feedback
 #' @param random_start whether to randomly initialize \code{W}
 #' @param start_W initial value for \code{W}
@@ -48,7 +49,8 @@
 #' mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
 #' mat[1, 1] <- NA
 #'
-#' modp = exponential_family_harmonium(mat, k = 2, family = "poisson", quiet = FALSE, learning_rate = 0.001, rms_prop = F, max_iters = 250)
+#' modp = exponential_family_harmonium(mat, k = 2, family = "poisson", quiet = FALSE,
+#'                                     learning_rate = 0.001, rms_prop = FALSE, max_iters = 250)
 #' gmf = generalizedMF(mat, k = 1, family = "poisson", quiet = FALSE)
 #'
 #'

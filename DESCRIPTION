@@ -7,7 +7,10 @@ NeedsCompilation: yes
 ByteCompile: yes
 Author: Andrew J. Landgraf
 Maintainer: Andrew J. Landgraf <landgraf.5@osu.edu>
-Description: Generalized dimensionality reduction by extending PCA.
+Description: Generalized dimensionality reduction by extending PCA to exponential
+  family data. This package includes three methods: Generalized PCA by Landgraf 
+  and Lee (2015), Exponential Family PCA (Generalized MF) by Collins et al. (2001),
+  and Exponential Family Harmoniums by Welling et al. (2005).
 License: MIT + file LICENSE
 LazyData: TRUE
 URL: https://github.com/andland/generalizedPCA
