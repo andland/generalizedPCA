@@ -4,12 +4,16 @@
 \alias{project.Fantope}
 \title{Project onto the Fantope}
 \usage{
-project.Fantope(x, k)
+project.Fantope(x, k, partial_decomp = FALSE)
 }
 \arguments{
 \item{x}{a symmetric matrix}
 
 \item{k}{the rank of the Fantope desired}
+
+\item{partial_decomp}{logical; if \code{TRUE}, the function uses the RSpectra package
+to more quickly calculate the eigen-decomposition. When the number of columns is small,
+the approximation may be less accurate and slower}
 }
 \value{
 \item{H}{a rank \code{k} Fantope matrix}

@@ -11,8 +11,9 @@
 #' @param family exponential family distribution of data
 #' @param weights an optional matrix of the same size as the \code{x} with non-negative weights
 #' @param quiet logical; whether the calculation should give feedback
-#' @param use_irlba logical; if \code{TRUE}, the function uses the irlba package
-#'   to more quickly calculate the eigen-decomposition
+#' @param partial_decomp logical; if \code{TRUE}, the function uses the RSpectra package
+#'   to more quickly calculate the eigen-decomposition. When the number of columns is small,
+#'   the approximation may be less accurate and slower
 #' @param max_iters number of maximum iterations
 #' @param conv_criteria convergence criteria. The difference between average deviance
 #'   in successive iterations
@@ -56,10 +57,9 @@
 #' @export
 #' @importFrom stats var
 convexGeneralizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomial", "poisson", "multinomial"),
-                                 weights, quiet = TRUE, use_irlba = FALSE, max_iters = 1000,
+                                 weights, quiet = TRUE, partial_decomp = FALSE, max_iters = 1000,
                                  conv_criteria = 1e-6, random_start = FALSE, start_H, mu,
                                  main_effects = TRUE, normalize = FALSE, ss_factor = 1) {
-  use_irlba = use_irlba && requireNamespace("irlba", quietly = TRUE)
 
   family = match.arg(family)
   check_family(x, family)
@@ -112,20 +112,20 @@ convexGeneralizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomi
   mu_mat = outer(rep(1, n), mu)
 
   if (!missing(start_H)) {
-    HU = project.Fantope(start_H, k)
+    HU = project.Fantope(start_H, k, partial_decomp = partial_decomp)
     H = HU$H
   } else if (random_start) {
     U = matrix(rnorm(d * d), d, d)
     U = qr.Q(qr(U))
-    HU = project.Fantope(U %*% t(U), k)
+    HU = project.Fantope(U %*% t(U), k, partial_decomp = partial_decomp)
     H = HU$H
   } else {
-    if (use_irlba) {
-      udv = irlba::irlba(scale(eta, center = mu, scale = normalize), nu = k, nv = k)
+    if (partial_decomp) {
+      udv = RSpectra::svds(scale(eta, center = mu, scale = normalize), k, nu = k, nv = k)
     } else {
       udv = svd(scale(eta, center = mu, scale = normalize), nu = k, nv = k)
     }
-    HU = project.Fantope(udv$v[, 1:k] %*% t(udv$v[, 1:k]), k)
+    HU = project.Fantope(udv$v[, 1:k] %*% t(udv$v[, 1:k]), k, partial_decomp = partial_decomp)
     H = HU$H
   }
 
@@ -182,7 +182,7 @@ convexGeneralizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomi
     deriv = deriv + t(deriv) - diag(diag(deriv))
 
     H = H + step * deriv
-    HU = project.Fantope(H, k)
+    HU = project.Fantope(H, k, partial_decomp = partial_decomp)
     H = HU$H
 
     theta = mu_mat + eta_centered %*% H
@@ -240,13 +240,20 @@ convexGeneralizedPCA <- function(x, k = 2, M = 4, family = c("gaussian", "binomi
 #'
 #' @param x a symmetric matrix
 #' @param k the rank of the Fantope desired
-#'
+#' @param partial_decomp logical; if \code{TRUE}, the function uses the RSpectra package
+#'   to more quickly calculate the eigen-decomposition. When the number of columns is small,
+#'   the approximation may be less accurate and slower
+
 #' @return
 #' \item{H}{a rank \code{k} Fantope matrix}
 #' \item{U}{a \code{k}-dimentional orthonormal matrix with the first \code{k} eigenvectors of \code{H}}
 #' @export
-project.Fantope <- function(x, k) {
-  eig = eigen(x, symmetric = TRUE)
+project.Fantope <- function(x, k, partial_decomp = FALSE) {
+  if (partial_decomp) {
+    eig = RSpectra::eigs_sym(x, k = min(k + 2, ncol(x)))
+  } else {
+    eig = eigen(x, symmetric = TRUE)
+  }
   vals = eig$values
   lower = vals[length(vals)] - k / length(vals)
   upper = max(vals)
