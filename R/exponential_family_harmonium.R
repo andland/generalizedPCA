@@ -51,6 +51,7 @@
 #' modp = exponential_family_harmonium(mat, k = 2, family = "poisson", quiet = FALSE, learning_rate = 0.001, rms_prop = F, max_iters = 250)
 #' gmf = generalizedMF(mat, k = 1, family = "poisson", quiet = FALSE)
 #'
+#'
 exponential_family_harmonium <- function(x, k = 2,
                           family = c("gaussian", "binomial", "poisson"),
                           family_hidden = c("gaussian", "binomial", "poisson"),
@@ -114,7 +115,9 @@ exponential_family_harmonium <- function(x, k = 2,
     stopifnot(dim(start_W) == c(d, k))
     W = as.matrix(start_W)
   } else if (random_start) {
-    W = matrix(rnorm(d * k, 0, 0.1), d, k)
+    # initialize with glorot_uniform (https://keras.io/initializers/#glorot_uniform)
+    # W = matrix(runif(d * k, -sqrt(6  / (k + d)), sqrt(6  / (k + d))), d, k)
+    W = matrix(rnorm(d * k, 0, 0.001), d, k)
   } else {
     udv = svd(scale(saturated_natural_parameters(x_imputed, family, 4), TRUE, FALSE))
     W = udv$v[, 1:k, drop = FALSE]
@@ -138,8 +141,9 @@ exponential_family_harmonium <- function(x, k = 2,
     W_grad_sq = matrix(1, nrow(W), ncol(W))
   }
 
+  W_lag = W
   for (ii in seq_len(max_iters)) {
-
+    # grad_deflate_times = 0
     while (TRUE) {
       hidden_mean_0 = exp_fam_mean(outer(ones, hidden_bias) + x_imputed %*% W, family_hidden)
       visible_hidden_0 = t(x_imputed_scaled) %*% hidden_mean_0
@@ -152,6 +156,27 @@ exponential_family_harmonium <- function(x, k = 2,
 
       # the generated data can explode with gaussian hidden and poisson visible
       if (any(is.na(visible_hidden_cd))) {
+        grad_deflate_times = grad_deflate_times + 1
+        if (!quiet) {
+          cat("Contrastive Divergence resulted in NA's\n")
+        }
+        return(
+          structure(
+            list(
+              mu = mu,
+              W = W_lag,
+              hidden_bias = hidden_bias,
+              family = family,
+              family_hidden = family_hidden,
+              iters = ii - 1,
+              cd_iters = cd_iters[1:(ii - 1)],
+              loss_trace = loss_trace[2:ii],
+              prop_deviance_expl = 1 - loss_trace[ii] / null_deviance,
+              W_grad_sq = W_grad_sq
+            ),
+            class = "efh"
+          )
+        )
         if (ii > 1) {
           W_grad_sq = W_grad_sq * 4
           W = W_lag + learning_rate * W_grad / sqrt(W_grad_sq)
@@ -175,11 +200,16 @@ exponential_family_harmonium <- function(x, k = 2,
       theta = outer(ones, mu) + exp_fam_mean(outer(ones, hidden_bias) + x_imputed %*% W, family_hidden) %*% t(W)
       loss_trace[ii + 1] <- exp_fam_deviance(x, theta, family) / sum_weights
 
-      if (loss_trace[ii + 1] <= loss_trace[1]) {
+      # if (loss_trace[ii + 1] <= loss_trace[1] | grad_deflate_times >= 1) {
+      #   grad_deflate_times = 0
         break
-      } else {
-        W_grad_sq = W_grad_sq * 4
-      }
+      # } else {
+      #   if (!quiet) {
+      #     cat("Loss is larger than initialization\n")
+      #   }
+      #   grad_deflate_times = grad_deflate_times + 1
+      #   W_grad_sq = W_grad_sq * 4
+      # }
     }
 
     if (!quiet) {
@@ -233,4 +263,108 @@ simulate_efh <- function(model, x, num_iter) {
   return(visible)
 }
 
-#' contrastive_divergence(mat, )
+#' @title Predict exponential family harmonium reconstruction on new data
+#'
+#' @description Predict exponential family harmonium reconstruction on new data
+#'
+#' @param object EFH object
+#' @param newdata matrix of the same exponential family as covariates in \code{object}.
+#  If missing, will use the data that \code{object} was fit on
+#' @param type the type of fitting required.
+#'  \code{type = "hidden"} gives matrix of hidden mean parameters of \code{x},
+#'  \code{type = "link"} gives a matrix on the natural parameter scale, and
+#'  \code{type = "response"} gives a matrix on the response scale
+#' @param ... Additional arguments
+#' @examples
+#' # construct a low rank matrices in the natural parameter space
+#' rows = 100
+#' cols = 10
+#' set.seed(1)
+#' loadings = rnorm(cols)
+#' mat_np = outer(rnorm(rows), rnorm(cols))
+#' mat_np_new = outer(rnorm(rows), loadings)
+#'
+#' # generate a count matrices
+#' mat = matrix(rpois(rows * cols, c(exp(mat_np))), rows, cols)
+#' mat_new = matrix(rpois(rows * cols, c(exp(mat_np_new))), rows, cols)
+#'
+#' modp = exponential_family_harmonium(mat, k = 9, family = "poisson", max_iters = 1000)
+#'
+#' pred = predict(modp, mat_new, type = "response")
+#'
+#' @export
+predict.efh <- function(object, newdata, type = c("hidden", "link", "response"), ...) {
+  type = match.arg(type)
+
+  if (missing(newdata)) {
+    stop("Need to supply data, even if it is the same used to fit the model!")
+  } else {
+    check_family(newdata, object$family)
+
+    newdata[is.na(newdata)] <- 0
+    hidden = exp_fam_mean(outer(rep(1, nrow(newdata)), object$hidden_bias) +
+                            newdata %*% object$W, object$family_hidden)
+  }
+
+  if (type == "hidden") {
+    hidden
+  } else {
+    theta = outer(rep(1, nrow(newdata)), object$mu) + hidden %*% t(object$W)
+    if (type == "link") {
+      theta
+    } else if (type == "response") {
+      exp_fam_mean(theta, object$family)
+    }
+  }
+}
+
+#' @title Plot exponential family harmonium
+#'
+#' @description
+#' Plots the results of a EFH
+#'
+#' @param x EFH object
+#' @param type the type of plot \code{type = "trace"} plots the algorithms progress by
+#' iteration
+#' @param ... Additional arguments
+#' @examples
+#' # construct a low rank matrix in the logit scale
+#' rows = 100
+#' cols = 10
+#' set.seed(1)
+#' mat_logit = outer(rnorm(rows), rnorm(cols))
+#'
+#' # generate a binary matrix
+#' mat = (matrix(runif(rows * cols), rows, cols) <= inv.logit.mat(mat_logit)) * 1.0
+#'
+#' # run logistic SVD on it
+#' efh = exponential_family_harmonium(mat, k = 2, family = "binomial", family_hidden = "binomial")
+#'
+#' \dontrun{
+#' plot(efh)
+#' }
+#' @export
+plot.efh <- function(x, type = c("trace"), ...) {
+  type = match.arg(type)
+
+  if (type == "trace") {
+    df = data.frame(Iteration = 1:x$iters,
+                    Deviance = x$loss_trace)
+    p <- ggplot2::ggplot(df, ggplot2::aes_string("Iteration", "Deviance")) +
+      ggplot2::geom_line()
+  }
+
+  return(p)
+}
+
+#' @export
+print.efh <- function(x, ...) {
+  # cat(nrow(x$A), "rows and ")
+  cat(nrow(x$W), "columns\n")
+  cat("Rank", ncol(x$W), "solution\n")
+  cat("\n")
+  cat(round(x$prop_deviance_expl * 100, 1), "% of deviance explained\n", sep = "")
+  cat(x$iters, "iterations to converge\n")
+
+  invisible(x)
+}

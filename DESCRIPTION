@@ -1,8 +1,8 @@
 Package: generalizedPCA
 Type: Package
 Title: Generalized PCA
-Version: 0.2
-Date: 2017-04-02
+Version: 0.3
+Date: 2018-02-24
 NeedsCompilation: yes
 ByteCompile: yes
 Author: Andrew J. Landgraf

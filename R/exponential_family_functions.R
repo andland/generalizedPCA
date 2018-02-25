@@ -208,7 +208,6 @@ exp_fam_sample <- function(theta, family) {
   if (family == "gaussian") {
     return(matrix(rnorm(prod(dim(theta)), mean = c(mean_mat), sd = 1), nrow(theta), ncol(theta)))
   } else if (family == "binomial") {
-    # set 1's to 1, 0's to -1, and everything else to 0
     return(matrix(rbinom(prod(dim(theta)), size = 1, prob = c(mean_mat)), nrow(theta), ncol(theta)))
   } else if (family == "poisson") {
     return(matrix(rpois(prod(dim(theta)), lambda = c(mean_mat)), nrow(theta), ncol(theta)))

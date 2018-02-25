@@ -68,6 +68,7 @@ mat[1, 1] <- NA
 modp = exponential_family_harmonium(mat, k = 2, family = "poisson", quiet = FALSE, learning_rate = 0.001, rms_prop = F, max_iters = 250)
 gmf = generalizedMF(mat, k = 1, family = "poisson", quiet = FALSE)
 
+
 }
 \references{
 Welling, Max, Michal Rosen-Zvi, and Geoffrey E. Hinton. "Exponential family
