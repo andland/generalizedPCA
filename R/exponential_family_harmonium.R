@@ -158,7 +158,7 @@ exponential_family_harmonium <- function(x, k = 2,
 
       # the generated data can explode with gaussian hidden and poisson visible
       if (any(is.na(visible_hidden_cd))) {
-        grad_deflate_times = grad_deflate_times + 1
+        # grad_deflate_times = grad_deflate_times + 1
         if (!quiet) {
           cat("Contrastive Divergence resulted in NA's\n")
         }
